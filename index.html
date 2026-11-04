@@ -108,6 +108,10 @@ svg.ar{position:absolute;left:0;top:0;pointer-events:none;z-index:2}
     <input id="q" type="search" placeholder="ค้นหาโครงการ…">
     <select id="fb"></select>
     <select id="fy"></select>
+    <select id="fst" title="กรองตามสถานะ UAT">
+      <option value="">ทุกสถานะ UAT</option><option value="doing">กำลังทำ</option><option value="todo">ยังไม่เริ่ม</option><option value="done">เสร็จแล้ว</option><option value="blocked">ติดขัด / ยกเลิก</option>
+    </select>
+    <button id="fclr" hidden>ล้างตัวกรอง</button>
   </div>
   <span style="flex:1"></span>
   <button id="addProj" class="pri">+ โครงการ</button>
@@ -133,7 +137,7 @@ var STATUS={
   todo:{label:'ยังไม่เริ่ม',color:'#9aa1ab',tx:'#fff'},
   doing:{label:'กำลังทำ',color:'#f5b800',tx:'#5c4300'},
   done:{label:'เสร็จแล้ว',color:'#4cae4f',tx:'#fff'},
-  blocked:{label:'ยกเลิก',color:'#e5484d',tx:'#fff'}
+  blocked:{label:'ติดขัด / ยกเลิก',color:'#e5484d',tx:'#fff'}
 };
 function $(s,r){return (r||document).querySelector(s)}
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
@@ -215,7 +219,7 @@ function seed(){
 }
 
 /* ---------- state ---------- */
-var S={projects:[],tasks:[],view:'ov',pid:null,zoom:{ov:5,pj:28},collapsed:{},f:{q:'',bank:'',year:''}};
+var S={projects:[],tasks:[],view:'ov',pid:null,zoom:{ov:5,pj:28},collapsed:{},f:{q:'',bank:'',year:'',status:''}};
 var R={rs:0,target:null};
 var pending=0,drag=false,lastJson='';
 function normT(t){t.parentId=t.parentId||'';t.dependsOn=String(t.dependsOn||'');t.progress=+t.progress||0;t.order=+t.order||0;t.owner=t.owner||'';t.status=STATUS[t.status]?t.status:'todo';return t}
@@ -254,14 +258,20 @@ function load(silent){
 }
 
 /* ---------- derived data ---------- */
-function filtered(){
+// สถานะของโครงการ = สถานะ UAT
+function pStatus(p){return p.uatStatus}
+function filtered(skip){
+  skip=skip||{};
   var q=S.f.q.trim().toLowerCase();
-  return S.projects.filter(function(p){
+  var list=S.projects.map(function(p,i){return {p:p,i:i}}).filter(function(o){
+    var p=o.p;
     if(S.f.bank&&p.bank!==S.f.bank)return false;
     if(S.f.year&&p.year!==S.f.year)return false;
     if(q&&(p.name+' '+p.bank+' '+p.remark).toLowerCase().indexOf(q)<0)return false;
+    if(!skip.status&&S.f.status&&pStatus(p)!==S.f.status)return false;
     return true;
   });
+  return list.map(function(o){return o.p});
 }
 function taskCounts(){
   var par={},c={};
@@ -354,14 +364,16 @@ function renderTop(){
     if(S.f.year&&!years[S.f.year])S.f.year='';
     fillSel($('#fb'),'ทุก Bank/ITMX',bl,S.f.bank);
     fillSel($('#fy'),'ทุกปี',yl,S.f.year);
+    $('#fst').value=S.f.status;
+    $('#fclr').hidden=!(S.f.bank||S.f.year||S.f.status||S.f.q.trim());
   }
   Array.prototype.forEach.call(document.querySelectorAll('#zoom button'),function(b){b.className=(+b.dataset.z===S.zoom[S.view])?'on':''});
   var h=Object.keys(STATUS).map(function(k){return '<span><i style="background:'+STATUS[k].color+'"></i>'+STATUS[k].label+'</span>'}).join('')
     +'<span><i style="background:repeating-linear-gradient(135deg,#f0abfc 0 3px,#e879f9 3px 6px)"></i>เลยกำหนด</span>';
   if(ov){
-    var l=filtered(),u=0,v=0,g=0;
-    l.forEach(function(x){if(x.uatStatus==='done')u++;if(x.pvtStatus==='done')v++;if(x.uatStatus==='doing'||x.pvtStatus==='doing')g++});
-    h+='<span class="sm">โครงการ '+l.length+' · UAT เสร็จ '+u+' · PVT เสร็จ '+v+' · กำลังดำเนินการ '+g+'</span>';
+    var l=filtered({status:true}),c={doing:0,todo:0,done:0,blocked:0};
+    l.forEach(function(x){c[pStatus(x)]++});
+    h+='<span class="sm">โครงการ '+l.length+' · UAT กำลังทำ '+c.doing+' · ยังไม่เริ่ม '+c.todo+' · เสร็จแล้ว '+c.done+(c.blocked?' · ติดขัด '+c.blocked:'')+'</span>';
   }else{
     h+='<span style="color:#e5484d">เส้นแดง = งานเริ่มก่อนงานที่ต้องรอจะเสร็จ</span>';
     if(p.remark)h+='<span class="rm" title="'+esc(p.remark)+'">Remark: '+esc(p.remark)+'</span>';
@@ -669,6 +681,8 @@ $('#goToday').onclick=scrollToday;
 $('#q').oninput=function(){S.f.q=this.value;render();scrollAnchor()};
 $('#fb').onchange=function(){S.f.bank=this.value;render();scrollAnchor()};
 $('#fy').onchange=function(){S.f.year=this.value;render();scrollAnchor()};
+$('#fclr').onclick=function(){S.f.q='';$('#q').value='';S.f.bank='';S.f.year='';S.f.status='';render();scrollAnchor()};
+$('#fst').onchange=function(){S.f.status=this.value;render();scrollAnchor()};
 $('#zoom').onclick=function(e){
   var z=e.target.dataset.z;if(!z)return;
   var g=$('#gantt'),k=S.view,day=(g.scrollLeft+g.clientWidth/2)/S.zoom[k];
