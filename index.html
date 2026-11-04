@@ -56,8 +56,10 @@ button.danger.arm{background:#dc2626;color:#fff;border-color:#dc2626}
 .yr{width:40px;flex:none;font-size:12px;color:var(--mut)}
 .pn{flex:1;min-width:0}
 .lr .pn{display:flex;flex-direction:column;line-height:1.25}
-.lr .pn b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.lr .pn small{color:var(--mut);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lr .pn b{font-weight:600;white-space:normal;overflow-wrap:anywhere}
+.lr .pn small{color:var(--mut);font-size:11px;white-space:normal}
+.lr.o{height:auto;min-height:var(--row);padding-top:6px;padding-bottom:6px}
+.rl{position:absolute;left:0;right:0;height:1px;background:#e6e8ec}
 .lr .pn small i{display:inline-block;width:8px;height:8px;border-radius:50%;margin:0 3px 0 0}
 #right{position:relative;flex:none}
 #rh{position:sticky;top:0;z-index:4;height:var(--head);background:#fff;border-bottom:1px solid var(--line)}
@@ -131,7 +133,7 @@ var STATUS={
   todo:{label:'ยังไม่เริ่ม',color:'#9aa1ab',tx:'#fff'},
   doing:{label:'กำลังทำ',color:'#f5b800',tx:'#5c4300'},
   done:{label:'เสร็จแล้ว',color:'#4cae4f',tx:'#fff'},
-  blocked:{label:'ยกเลิก',color:'#e5484d',tx:'#fff'}
+  blocked:{label:'ติดขัด / ยกเลิก',color:'#e5484d',tx:'#fff'}
 };
 function $(s,r){return (r||document).querySelector(s)}
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
@@ -385,18 +387,32 @@ function renderOv(g){
   if(!list.length){g.innerHTML='<div class="empty">ไม่พบโครงการตามตัวกรอง</div>';R.target=null;return}
   var tc=taskCounts(),ranges=[],mn=t0-30,mx=t0+60;
   list.forEach(function(p){['uat','pvt'].forEach(function(k){var r=rng(p,k);if(r){ranges.push([r.s,r.e]);mn=Math.min(mn,r.s-14);mx=Math.max(mx,r.e+45)}})});
-  var F=frame(mn,mx,dw,t0),rs=F.rs,H=Math.max(list.length*ROWO,320);
+  var F=frame(mn,mx,dw,t0),rs=F.rs;
   R.rs=rs;setTarget(ranges,t0);
-  var left='',bars='';
+  var left='';
   list.forEach(function(p,k){
     var c=tc[p.id],cnt=c?' · งาน '+c.d+'/'+c.n:'';
-    left+='<div class="lr" data-id="'+esc(p.id)+'"><span class="no">'+esc(p.no||k+1)+'</span><span class="bk" title="'+esc(p.bank)+'">'+esc(p.bank)+'</span><span class="yr">'+esc(p.year)+'</span>'
+    left+='<div class="lr o" data-id="'+esc(p.id)+'"><span class="no">'+esc(p.no||k+1)+'</span><span class="bk" title="'+esc(p.bank)+'">'+esc(p.bank)+'</span><span class="yr">'+esc(p.year)+'</span>'
       +'<span class="pn"><b title="'+esc(p.name)+'">'+esc(p.name)+'</b><small>'+stLine(p)+cnt+'</small></span>'
       +'<button class="ed" data-ed="1" title="แก้ไขข้อมูลโครงการ">✎</button></div>';
-    [['uat',7],['pvt',26]].forEach(function(a){
+  });
+  // รอบแรก: วาดคอลัมน์ซ้ายก่อน เพื่อวัดความสูงจริงของแต่ละแถว (ชื่อยาวจะขึ้นบรรทัดใหม่ได้)
+  g.innerHTML='<div id="inner" class="o" style="--row:'+ROWO+'px;--left:440px"><div id="left"><div id="lh"><span class="no">#</span><span class="bk">Bank</span><span class="yr">ปี</span><span class="pn">โครงการ</span></div><div id="lrows">'+left+'</div></div>'
+    +'<div id="right" style="width:'+F.W+'px"><div id="rh">'+F.mh+F.dh+'</div><div id="rb"></div></div></div>';
+  var els=g.querySelectorAll('#lrows .lr'),tops=[],hs=[],y=0;
+  Array.prototype.forEach.call(els,function(el){
+    var h=Math.max(ROWO,Math.ceil(el.getBoundingClientRect().height));
+    el.style.height=h+'px';tops.push(y);hs.push(h);y+=h;
+  });
+  var H=Math.max(y,320),bars='',lines='';
+  // รอบสอง: วางแถบ UAT/PVT ตามตำแหน่งและความสูงจริงของแต่ละแถว
+  list.forEach(function(p,k){
+    lines+='<div class="rl" style="top:'+(tops[k]+hs[k]-1)+'px"></div>';
+    var by=tops[k]+Math.round((hs[k]-34)/2);
+    [['uat',0],['pvt',19]].forEach(function(a){
       var key=a[0],r=rng(p,key),st=STATUS[p[key+'Status']],lab=key.toUpperCase();
       if(!r)return;
-      var x=(r.s-rs)*dw,w=(r.e-r.s+1)*dw,top=k*ROWO+a[1];
+      var x=(r.s-rs)*dw,w=(r.e-r.s+1)*dw,top=by+a[1];
       var txt=lab+' '+fmtY(r.s)+' – '+fmtY(r.e),fits=w>=txt.length*6.4+14;
       bars+='<div class="bar leaf" data-id="'+esc(p.id)+'" data-ph="'+key+'" style="left:'+x+'px;top:'+top+'px;height:15px;width:'+w+'px;background:'+st.color+'">'
         +'<i class="hd l"></i><i class="hd r"></i><span class="bt" style="color:'+st.tx+'">'+(fits?txt:lab)+'</span></div>';
@@ -404,14 +420,15 @@ function renderOv(g){
       if(p[key+'Status']!=='done'&&r.e<t0)bars+='<div class="late" style="left:'+(r.e+1-rs)*dw+'px;top:'+top+'px;height:15px;width:'+(t0-r.e)*dw+'px"></div>';
     });
   });
-  g.innerHTML='<div id="inner" class="o" style="--row:'+ROWO+'px;--left:440px"><div id="left"><div id="lh"><span class="no">#</span><span class="bk">Bank</span><span class="yr">ปี</span><span class="pn">โครงการ</span></div><div style="height:'+H+'px">'+left+'</div></div>'
-    +'<div id="right" style="width:'+F.W+'px"><div id="rh">'+F.mh+F.dh+'</div>'
-    +'<div id="rb" style="height:'+H+'px;'+gridBg(dw,ROWO)+'">'+F.bg+F.tl+bars+'</div></div></div>';
+  $('#lrows').style.height=H+'px';
+  var rb=$('#rb');
+  rb.style.cssText='height:'+H+'px;background-image:linear-gradient(to right,#eef0f3 1px,transparent 1px);background-size:'+dw+'px 100%';
+  rb.innerHTML=F.bg+F.tl+lines+bars;
   $('#left').onclick=function(e){
     var row=e.target.closest('.lr');if(!row)return;
     if(e.target.dataset.ed)openProject(row.dataset.id);else goPj(row.dataset.id);
   };
-  bindDrag($('#rb'),function(bar){
+  bindDrag(rb,function(bar){
     var key=bar.dataset.ph,p=pById(bar.dataset.id);if(!key||!p)return null;
     var r=rng(p,key);if(!r)return null;
     return {s:r.s,e:r.e,commit:function(a,b){p[key+'Start']=a;p[key+'End']=b;persist('saveProject',p);render()}};
@@ -685,6 +702,7 @@ function showLogin(msg){
   inp.focus();
 }
 $('#logout').onclick=function(){clearKey();showLogin('')};
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(function(){if(!drag&&S.view==='ov')render()});
 setInterval(function(){if(REMOTE&&KEY&&!pending&&!drag&&!ovEl)load(true)},20000);
 (function start(){
   if(REMOTE){
