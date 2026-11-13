@@ -222,7 +222,7 @@ tr.lgh small{color:var(--mut);font-weight:400}
     <select id="fb"></select>
     <select id="fy"></select>
     <select id="fst" title="กรองตามสถานะ UAT">
-      <option value="">ทุกสถานะ UAT</option><option value="doing">กำลังทำ</option><option value="todo">ยังไม่เริ่ม</option><option value="done">เสร็จแล้ว</option><option value="blocked">ติดขัด / ยกเลิก</option>
+      <option value="">ทุกสถานะ UAT</option><option value="doing">กำลังทำ</option><option value="todo">ยังไม่เริ่ม</option><option value="done">เสร็จแล้ว</option><option value="blocked">ยกเลิก</option>
     </select>
     <button id="fclr" hidden>ล้างตัวกรอง</button>
   </div>
@@ -253,7 +253,7 @@ var STATUS={
   todo:{label:'ยังไม่เริ่ม',color:'#9aa1ab',tx:'#fff'},
   doing:{label:'กำลังทำ',color:'#f5b800',tx:'#5c4300'},
   done:{label:'เสร็จแล้ว',color:'#4cae4f',tx:'#fff'},
-  blocked:{label:'ติดขัด / ยกเลิก',color:'#e5484d',tx:'#fff'}
+  blocked:{label:'ยกเลิก',color:'#e5484d',tx:'#fff'}
 };
 function $(s,r){return (r||document).querySelector(s)}
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
