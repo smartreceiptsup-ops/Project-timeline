@@ -869,7 +869,7 @@ function rpRow(it,n,m){
 }
 function rpTable(items,m,emptyMsg){
   if(!items.length)return '<div class="rpe">'+emptyMsg+'</div>';
-  return '<div class="rpt"><table class="rt rtf"><colgroup><col style="width:40px"><col style="width:110px"><col><col style="width:70px"><col style="width:170px"><col style="width:100px"><col style="width:22%"></colgroup><thead><tr><th>#</th><th>Bank/ITMX</th><th>โครงการ</th><th>ระยะ</th><th>ช่วงวันที่</th><th>สถานะ</th><th>Remark</th></tr></thead><tbody>'
+  return '<div class="rpt"><table class="rt rtf"><colgroup><col style="width:40px"><col style="width:110px"><col><col style="width:70px"><col style="width:170px"><col style="width:100px"><col style="width:22%"></colgroup><thead><tr><th>#</th><th>Bank/ITMX</th><th>โครงการ</th><th>ENV</th><th>ช่วงวันที่</th><th>สถานะ</th><th>Remark</th></tr></thead><tbody>'
     +items.map(function(it,i){return rpRow(it,i+1,m)}).join('')+'</tbody></table></div>';
 }
 function rpText(D){
