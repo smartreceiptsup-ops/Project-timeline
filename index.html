@@ -178,7 +178,7 @@ table.ul{width:100%;border-collapse:collapse;font-size:13px}
 #dbtip .tr span{color:var(--tx2)}
 .ytot .kpis{grid-template-columns:1fr}
 @media (max-width:1100px){.dbg{grid-template-columns:1fr}.ytot .kpis{grid-template-columns:1fr 1fr}}
-@media print{.card,.kpi{break-inside:avoid}.dbg{grid-template-columns:1fr 260px 170px}.ulist{max-height:none}#dbtip{display:none}}
+@media print{.db,.db *{-webkit-print-color-adjust:exact;print-color-adjust:exact}.card,.kpi{break-inside:avoid}.dbg{grid-template-columns:minmax(0,1fr)}.ytot .kpis{grid-template-columns:1fr 1fr}.ulist{max-height:none;overflow:visible}.db .plot{min-height:200px}#dbtip{display:none}}
 @media print{
   #top,#sub,.rpbar{display:none!important}
   html,body{height:auto;display:block}
@@ -190,9 +190,6 @@ table.ul{width:100%;border-collapse:collapse;font-size:13px}
 .md.wide{max-width:820px}
 .g3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .sec{margin:16px 0 6px;font-size:12px;font-weight:600;color:var(--mut);border-bottom:1px solid var(--line);padding-bottom:3px}
-.rsrow{display:flex;gap:6px;margin-bottom:6px}
-.rsrow input{flex:1;min-width:0;padding:7px 9px;border:1px solid #d5d9e0;border-radius:8px;background:#fff}
-.rsrow button{padding:0 10px}
 .fld .raw{font-size:11px;color:#b45309;margin-top:2px}
 .stats{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}
 .stat{border:1px solid var(--line);border-radius:10px;padding:6px 14px;min-width:118px}
@@ -217,7 +214,7 @@ tr.lgh small{color:var(--mut);font-weight:400}
     <select id="fb"></select>
     <select id="fy"></select>
     <select id="fst" title="กรองตามสถานะ UAT">
-      <option value="">ทุกสถานะ UAT</option><option value="doing">กำลังทำ</option><option value="todo">ยังไม่เริ่ม</option><option value="done">เสร็จแล้ว</option><option value="blocked">ยกเลิก</option>
+      <option value="">ทุกสถานะ UAT</option><option value="doing">กำลังทำ</option><option value="todo">ยังไม่เริ่ม</option><option value="done">เสร็จแล้ว</option><option value="blocked">ติดขัด / ยกเลิก</option>
     </select>
     <button id="fclr" hidden>ล้างตัวกรอง</button>
   </div>
@@ -248,7 +245,7 @@ var STATUS={
   todo:{label:'ยังไม่เริ่ม',color:'#9aa1ab',tx:'#fff'},
   doing:{label:'กำลังทำ',color:'#f5b800',tx:'#5c4300'},
   done:{label:'เสร็จแล้ว',color:'#4cae4f',tx:'#fff'},
-  blocked:{label:'ยกเลิก',color:'#e5484d',tx:'#fff'}
+  blocked:{label:'ติดขัด / ยกเลิก',color:'#e5484d',tx:'#fff'}
 };
 function $(s,r){return (r||document).querySelector(s)}
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
@@ -360,7 +357,7 @@ function seedLogs(){
 }
 
 /* ---------- state ---------- */
-var S={projects:[],tasks:[],view:'ov',pid:null,zoom:{ov:5,pj:28},collapsed:{},f:{q:'',bank:'',year:'',status:''},rp:{from:'',late:false,tbc:false},logs:[],lgLoaded:false,lgErr:'',lg:{month:'',type:'',sent:false,q:''},db:{year:'',month:'',tbl:false}};
+var S={projects:[],tasks:[],view:'ov',pid:null,zoom:{ov:5,pj:28},collapsed:{},f:{q:'',bank:'',year:'',status:''},rp:{from:'',to:'',late:false,tbc:false},logs:[],lgLoaded:false,lgErr:'',lg:{month:'',type:'',sent:false,q:''},db:{year:'',month:'',tbl:false}};
 var R={rs:0,target:null};
 var pending=0,drag=false,lastJson='';
 function normT(t){t.parentId=t.parentId||'';t.dependsOn=String(t.dependsOn||'');t.progress=+t.progress||0;t.order=+t.order||0;t.owner=t.owner||'';t.status=STATUS[t.status]?t.status:'todo';return t}
@@ -818,7 +815,7 @@ function openProject(id){
   $('#p-name',el).focus();
 }
 
-/* ---------- รายงานงานที่ต้องดำเนินการ (2 เดือน) ---------- */
+/* ---------- แผนงานที่ต้องดำเนินการ (เลือกช่วงเดือนเอง) ---------- */
 function ymNow(){var t=new Date();return t.getFullYear()+'-'+(t.getMonth()<9?'0':'')+(t.getMonth()+1)}
 function ymAdd(ym,n){var q=ym.split('-').map(Number),m=q[1]-1+n,y=q[0]+Math.floor(m/12);m=((m%12)+12)%12;return y+'-'+(m<9?'0':'')+(m+1)}
 function ymStart(ym){return d2n(ym+'-01')}
@@ -826,9 +823,16 @@ function ymEnd(ym){var q=ym.split('-').map(Number);return Math.floor(Date.UTC(q[
 function ymLabel(ym){var q=ym.split('-');return MON[+q[1]-1]+' '+(+q[0]+543)}
 
 // รวบรวมรายการ UAT/PVT ทุกสถานะ ที่ช่วงวันที่คาบเกี่ยวกับ 2 เดือนที่เลือก
-function rpData(from){
-  var m0=from,m1=ymAdd(from,1);
-  var months=[{ym:m0,a:ymStart(m0),b:ymEnd(m0),items:[]},{ym:m1,a:ymStart(m1),b:ymEnd(m1),items:[]}];
+function rpRange(){
+  var from=S.rp.from||ymNow(),to=S.rp.to||ymAdd(from,1);
+  if(to<from)to=from;
+  if(ymAdd(from,23)<to)to=ymAdd(from,23);
+  return {from:from,to:to};
+}
+function rpTitle(f,t){return f===t?ymLabel(f):ymLabel(f)+' – '+ymLabel(t)}
+function rpData(from,to){
+  var m0=from,m1=to,months=[],ym,n;
+  for(ym=from,n=0;ym<=to&&n<24;ym=ymAdd(ym,1),n++)months.push({ym:ym,a:ymStart(ym),b:ymEnd(ym),items:[]});
   
   S.projects.forEach(function(p){
     ['uat','pvt'].forEach(function(k){
@@ -869,7 +873,7 @@ function rpTable(items,m,emptyMsg){
     +items.map(function(it,i){return rpRow(it,i+1,m)}).join('')+'</tbody></table></div>';
 }
 function rpText(D){
-  var L=['แผนงานที่ต้องดำเนินการ: '+ymLabel(D.from)+' – '+ymLabel(D.to),
+  var L=['แผนงานที่ต้องดำเนินการ: '+rpTitle(D.from,D.to),
     '(UAT/PVT ทุกสถานะที่คาบเกี่ยวกับเดือนที่เลือก · รวม '+D.projects+' โครงการ)',''];
   function line(it,i){
     var r=it.r;
@@ -901,25 +905,25 @@ function copyTxt(t){
 }
 function renderRp(g){
   if(!S.projects.length){g.innerHTML='<div class="empty">ยังไม่มีโครงการ</div>';return}
-  var from=S.rp.from||ymNow(),D=rpData(from);
-  var lo=ymAdd(ymNow(),-6),hi=ymAdd(ymNow(),18),opts='',ym,n;
+  var R=rpRange(),from=R.from,to=R.to,D=rpData(from,to);
+  var lo=ymAdd(ymNow(),-12),hi=ymAdd(ymNow(),24),ym,n,oF='',oT='';
   if(from<lo)lo=from;
-  if(ymAdd(from,1)>hi)hi=ymAdd(from,1);
+  if(to>hi)hi=to;
   for(ym=lo,n=0;ym<=hi&&n<200;ym=ymAdd(ym,1),n++){
-    opts+='<option value="'+ym+'"'+(ym===from?' selected':'')+'>'+ymLabel(ym)+' – '+ymLabel(ymAdd(ym,1))+'</option>';
+    oF+='<option value="'+ym+'"'+(ym===from?' selected':'')+'>'+ymLabel(ym)+'</option>';
+    oT+='<option value="'+ym+'"'+(ym===to?' selected':'')+'>'+ymLabel(ym)+'</option>';
   }
-  var h='<div class="rpwrap"><h2 class="rph">แผนงานที่ต้องดำเนินการเดือนต่อไป: '+ymLabel(D.from)+' – '+ymLabel(D.to)+'</h2>'
-    +'<p class="rps">UAT และ PVT ทุกสถานะที่ช่วงวันที่คาบเกี่ยวกับ 2 เดือนนี้ · รวม '+D.projects+' โครงการ ('+D.u+' รายการ UAT · '+D.v+' รายการ PVT)</p>'
-    +'<div class="rpbar"><button id="rp-prev" title="เดือนก่อนหน้า">‹</button><select id="rp-from">'+opts+'</select><button id="rp-next" title="เดือนถัดไป">›</button><button id="rp-now">เดือนนี้</button>'
+  var h='<div class="rpwrap"><h2 class="rph">แผนงานที่ต้องดำเนินการ: '+rpTitle(D.from,D.to)+'</h2>'
+    +'<p class="rps">UAT และ PVT ทุกสถานะที่ช่วงวันที่คาบเกี่ยวกับเดือนที่เลือก · รวม '+D.projects+' โครงการ ('+D.u+' รายการ UAT · '+D.v+' รายการ PVT)</p>'
+    +'<div class="rpbar"><label class="ck">ตั้งแต่เดือน <select id="rp-from">'+oF+'</select></label><label class="ck">ถึงเดือน <select id="rp-to">'+oT+'</select></label><button id="rp-now">เดือนปัจจุบัน</button>'
     +'<span class="sp"></span><button id="rp-copy">คัดลอกเป็นข้อความ</button><button id="rp-print">พิมพ์ / บันทึก PDF</button></div>';
   D.months.forEach(function(m){
     h+='<h3 class="rpm">'+ymLabel(m.ym)+'<small>'+m.items.length+' รายการ</small></h3>'+rpTable(m.items,m,'ไม่มีรายการที่ต้องดำเนินการในเดือนนี้');
   });
   g.innerHTML=h+'</div>';
-  $('#rp-from').onchange=function(){S.rp.from=this.value;render()};
-  $('#rp-prev').onclick=function(){S.rp.from=ymAdd(from,-1);render()};
-  $('#rp-next').onclick=function(){S.rp.from=ymAdd(from,1);render()};
-  $('#rp-now').onclick=function(){S.rp.from='';render()};
+  $('#rp-from').onchange=function(){S.rp.from=this.value;if(S.rp.to&&S.rp.to<this.value)S.rp.to=this.value;if(!S.rp.to)S.rp.to=ymAdd(this.value,1);render()};
+  $('#rp-to').onchange=function(){S.rp.to=this.value;if(from>this.value)S.rp.from=this.value;else S.rp.from=from;render()};
+  $('#rp-now').onclick=function(){S.rp.from=ymNow();S.rp.to=ymNow();render()};
   $('#rp-copy').onclick=function(){copyTxt(rpText(D))};
   $('#rp-print').onclick=function(){window.print()};
 }
@@ -1262,7 +1266,7 @@ function openLog(id){
       +'<div class="fld"><span>ประเภท</span>'+enumSel('lg-kind','kind',l.kind)+'</div>'
       +'<div class="fld"><span>ประเภท_1</span>'+enumSel('lg-origin','origin',l.origin)+'</div></div>'
     +'<div class="g2"><div class="fld"><span>Owner (ฝ่ายเจ้าของโครงการ)</span><input id="lg-owner" list="lg-owners" value="'+esc(l.owner)+'"></div>'
-      +'<div class="fld"><span>ฝ่ายที่ร่วมทดสอบ</span><input id="lg-startDept" list="lg-depts" value="'+esc(l.startDept)+'"></div></div>'
+      +'<div class="fld"><span>ฝ่ายที่เริ่มทดสอบ</span><input id="lg-startDept" list="lg-depts" value="'+esc(l.startDept)+'"></div></div>'
     +A('title','เรื่อง/โครงการ',2)
     +'<div class="sec">รายละเอียดการทดสอบ</div>'
     +A('condition','เงื่อนไข',3)+A('limits','ข้อจำกัดในการทดสอบ',3)
@@ -1272,7 +1276,7 @@ function openLog(id){
     +'<div class="g3">'+D('invite','วันที่บอ. เชิญทดสอบ')+D('testDate','วันที่ทดสอบ')
       +'<div class="fld"><span>เดือนที่ทดสอบ</span><input type="month" id="lg-month" value="'+mval+'" placeholder="yyyy-mm">'
       +(raw.month?'<div class="raw">ค่าเดิมในชีต: '+esc(raw.month)+'</div>':'<div class="raw" style="color:var(--mut)">เติมอัตโนมัติจากวันที่ทดสอบ</div>')+'</div></div>'
-    +'<div class="fld"><span>วันที่ส่งผลทดสอบ (1 ข้อความต่อ 1 รายการ)</span><div id="lg-rs"></div><button type="button" id="lg-radd">+ เพิ่มรายการ</button></div>'
+    +'<div class="fld"><span>วันที่ส่งผลทดสอบ</span><textarea id="lg-resultDates" rows="2" placeholder="เช่น 16 ม.ค. 69 ส่งผลทดสอบทางอีเมล">'+esc(resultList(l).join('\n'))+'</textarea></div>'
     +'<div class="sec">Change และการขึ้นระบบ</div>'
     +'<div class="g2">'+D('changeDate','วันที่ส่ง change')+T('changeNo','เลขที่ change')+'</div>'
     +'<div class="g2">'+D('deployDate','วันที่ลงโปรแกรม')+D('golive','วันที่เปิดให้บริการลูกค้า')+'</div>'
@@ -1280,19 +1284,6 @@ function openLog(id){
     +'<div class="g2"><div class="fld"><span>ผู้บันทึกข้อมูล</span><input id="lg-recorder" list="lg-recs" value="'+esc(l.recorder)+'"></div><div></div></div>'
     +dl('lg-uats',distinct('uatNo'))+dl('lg-owners',distinct('owner'))+dl('lg-depts',distinct('startDept'))+dl('lg-recs',distinct('recorder'))
     +'<div class="btns">'+(isNew?'':'<button class="danger" id="lg-del">ลบ</button>')+'<span style="flex:1"></span><button id="lg-x">ยกเลิก</button><button class="pri" id="lg-ok">บันทึก</button></div>','wide');
-  // ---- วันที่ส่งผลทดสอบ: หลายรายการ ----
-  var rs=resultList(l);if(!rs.length)rs=[''];
-  var box=$('#lg-rs',el);
-  function drawRs(focusLast){
-    box.innerHTML=rs.map(function(v,i){
-      return '<div class="rsrow"><input data-i="'+i+'" value="'+esc(v)+'" placeholder="เช่น 16 ม.ค. 69 ส่งผลทดสอบทางอีเมล"><button type="button" data-rm="'+i+'" title="ลบรายการ">✕</button></div>';
-    }).join('');
-    if(focusLast){var ins=box.querySelectorAll('input');if(ins.length)ins[ins.length-1].focus()}
-  }
-  drawRs();
-  box.oninput=function(e){var i=e.target.dataset.i;if(i!=null)rs[+i]=e.target.value};
-  box.onclick=function(e){var i=e.target.dataset.rm;if(i==null)return;rs.splice(+i,1);if(!rs.length)rs=[''];drawRs()};
-  $('#lg-radd',el).onclick=function(){rs.push('');drawRs(true)};
   // ---- เดือนที่ทดสอบ อัตโนมัติจากวันที่ทดสอบ ----
   var auto=!mval||(isDate(l.testDate)&&mval===l.testDate.slice(0,7));
   $('#lg-testDate',el).onchange=function(){if(auto&&this.value)$('#lg-month',el).value=this.value.slice(0,7)};
@@ -1317,7 +1308,6 @@ function openLog(id){
     });
     LDATE.forEach(function(k){l[k]=$('#lg-'+k,el).value||raw[k]||''});
     l.month=$('#lg-month',el).value||($('#lg-testDate',el).value||'').slice(0,7)||raw.month||'';
-    l.resultDates=rs.map(function(s){return s.trim()}).filter(Boolean).join('\n');
     try{if(l.recorder)localStorage.setItem('ptl-recorder',l.recorder)}catch(e){}
     if(isNew)S.logs.push(l);else S.logs[S.logs.findIndex(function(x){return x.id===l.id})]=l;
     var m=logMonth(l);
