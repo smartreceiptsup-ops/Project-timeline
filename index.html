@@ -101,6 +101,7 @@ svg.ar{position:absolute;left:0;top:0;pointer-events:none;z-index:2}
 .rph{margin:0 0 4px;font-size:18px}
 .rps{color:var(--mut);margin:0 0 12px;font-size:13px}
 .rpbar{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin-bottom:6px}
+.rpbar input[type=search]{padding:6px 10px;border:1px solid #d5d9e0;border-radius:8px;background:#fff;min-width:220px}
 .rpbar select{padding:6px 10px;border:1px solid #d5d9e0;border-radius:8px;background:#fff}
 .rpbar .sp{flex:1}
 .rpm{margin:20px 0 6px;font-size:15px}
@@ -231,7 +232,7 @@ tr.lgh small{color:var(--mut);font-weight:400}
     <select id="fb"></select>
     <select id="fy"></select>
     <select id="fst" title="กรองตามสถานะ UAT">
-      <option value="">ทุกสถานะ UAT</option><option value="doing">กำลังทำ</option><option value="todo">ยังไม่เริ่ม</option><option value="done">เสร็จแล้ว</option><option value="blocked">ยกเลิก</option>
+      <option value="">ทุกสถานะ UAT</option><option value="doing">กำลังทำ</option><option value="todo">ยังไม่เริ่ม</option><option value="done">เสร็จแล้ว</option><option value="blocked">ติดขัด / ยกเลิก</option>
     </select>
     <button id="fclr" hidden>ล้างตัวกรอง</button>
   </div>
@@ -240,6 +241,9 @@ tr.lgh small{color:var(--mut);font-weight:400}
   <button id="toRp" title="แผนงานที่ต้องดำเนินการเดือนต่อไป">แผนงานเดือนต่อไป</button>
   <button id="toDb" title="Dashboard สรุปผลการทดสอบรายเดือน">Dashboard</button>
   <button id="toLg" title="บันทึกผลทดสอบ">บันทึกผลทดสอบ</button>
+  <button id="toSv" title="Survey">Survey</button>
+  <button id="toSm" title="เมลแจ้ง Support Test">เมลแจ้ง Support Test</button>
+  <button id="toSd" title="Support ทำรายการต่างธนาคาร รายวัน">Support รายวัน</button>
   <button id="editProj" hidden>✎ ข้อมูลโครงการ</button>
   <button id="addTask" class="pri" hidden>+ งานหลัก</button>
   <div class="grp" id="zoom">
@@ -262,7 +266,7 @@ var STATUS={
   todo:{label:'ยังไม่เริ่ม',color:'#9aa1ab',tx:'#fff'},
   doing:{label:'กำลังทำ',color:'#f5b800',tx:'#5c4300'},
   done:{label:'เสร็จแล้ว',color:'#4cae4f',tx:'#fff'},
-  blocked:{label:'ยกเลิก',color:'#e5484d',tx:'#fff'}
+  blocked:{label:'ติดขัด / ยกเลิก',color:'#e5484d',tx:'#fff'}
 };
 function $(s,r){return (r||document).querySelector(s)}
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
@@ -298,8 +302,28 @@ var local={
   deleteProject:function(db,id){db.tasks=db.tasks.filter(function(t){return t.projectId!==id});db.projects=db.projects.filter(function(p){return p.id!==id})},
   getLogs:function(db){if(!db.logs)db.logs=seedLogs();return db.logs},
   saveLog:function(db,l){if(!db.logs)db.logs=seedLogs();upsert(db.logs,l)},
-  deleteLog:function(db,id){db.logs=(db.logs||[]).filter(function(x){return x.id!==id})}
+  deleteLog:function(db,id){db.logs=(db.logs||[]).filter(function(x){return x.id!==id})},
+  getSimple:function(db,k){db.simple=db.simple||{};if(!db.simple[k])db.simple[k]=seedSimple(k);return db.simple[k]},
+  saveSimple:function(db,a){
+    db.simple=db.simple||{};var l=db.simple[a.kind]||(db.simple[a.kind]=seedSimple(a.kind)),r=a.row;
+    if(a.kind==='sd'){var h=l.filter(function(x){return x.date===r.date})[0];if(h)r.id=h.id}
+    if(!r.no&&a.kind!=='sd'){var pre=a.kind==='sv'?'S_':'SU_',mx=0;l.forEach(function(x){var m=String(x.no).match(/(\d+)\s*$/);if(m)mx=Math.max(mx,+m[1])});r.no=pre+(mx+1)}
+    upsert(l,r);
+  },
+  deleteSimple:function(db,a){db.simple=db.simple||{};db.simple[a.kind]=(db.simple[a.kind]||[]).filter(function(x){return x.id!==a.id})}
 };
+function seedSimple(k){
+  var t=new Date(),y=t.getFullYear(),m=pad2(t.getMonth()+1),i,r=[];
+  if(k==='sv'){
+    var st=['ส่งเมลให้ฝ่ายพด.','ฝ่ายพด.แจ้งฝ่ายที่เกี่ยวข้อง','ฝ่ายพด. แจ้งข้อมูลกลับ','ส่งให้ ITMX'];
+    for(i=1;i<=4;i++)r.push({id:'sv'+i,no:'S_'+i,title:'ตัวอย่าง: Survey เรื่องที่ '+i,dept:['ฝ่ายปฏิบัติการ','ฝ่ายช่องทางดิจิทัล'][i%2],status:st[i-1],due:y+'-'+m+'-'+pad2(5+i*5),remark:'ตัวอย่าง Remark\nบรรทัดที่ 2'});
+  }else if(k==='sm'){
+    for(i=1;i<=4;i++)r.push({id:'sm'+i,no:'SU_'+i,bank:['KTB','SCB','BBL','KBANK'][i-1],title:'ตัวอย่าง: แจ้งทดสอบ Support เรื่องที่ '+i,when:'อ. '+pad2(i+2)+'/'+m+'/'+(y+543)+' 09:2'+i+' AM',remark:'เรียน ผู้เกี่ยวข้อง\nตัวอย่างเนื้อความเมล'});
+  }else{
+    for(i=1;i<=10;i++)r.push({id:'sd'+i,date:y+'-'+m+'-'+pad2(i),count:String([3,5,0,2,6,4,1,7,2,3][i-1]),remark:''});
+  }
+  return r;
+}
 function call(fn,arg){
   if(REMOTE){
     return fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({key:KEY,fn:fn,arg:arg===undefined?null:arg})})
@@ -509,10 +533,10 @@ function fillSel(sel,first,vals,cur){
   sel.value=cur;
 }
 function renderTop(){
-  var ov=S.view==='ov',lg=S.view==='lg',db=S.view==='db',rp=S.view==='rp'||lg||db,p=(ov||rp)?null:pById(S.pid);
-  $('#back').hidden=ov;$('#flt').hidden=!ov;$('#addProj').hidden=!ov;$('#toRp').hidden=!ov;$('#toLg').hidden=!ov;$('#toDb').hidden=!ov;
+  var ov=S.view==='ov',lg=S.view==='lg',db=S.view==='db',sl=!!SLV[S.view],rp=S.view==='rp'||lg||db||sl,p=(ov||rp)?null:pById(S.pid);
+  $('#back').hidden=ov;$('#flt').hidden=!ov;$('#addProj').hidden=!ov;$('#toRp').hidden=!ov;$('#toLg').hidden=!ov;$('#toDb').hidden=!ov;$('#toSv').hidden=!ov;$('#toSm').hidden=!ov;$('#toSd').hidden=!ov;
   $('#editProj').hidden=ov||rp;$('#addTask').hidden=ov||rp;$('#zoom').hidden=rp;$('#goToday').hidden=rp;
-  $('#ttl').innerHTML=ov?'<b>Project Timeline</b>':db?'<b>Dashboard ผลการทดสอบ</b>':lg?'<b>บันทึกผลทดสอบ</b>':rp?'<b>แผนงานที่ต้องดำเนินการเดือนต่อไป</b>':'<b>'+esc(p.name)+'</b>'+(p.bank?'<span class="tag">'+esc(p.bank)+'</span>':'')+(p.year?'<span class="tag">'+esc(p.year)+'</span>':'');
+  $('#ttl').innerHTML=ov?'<b>Project Timeline</b>':sl?'<b>'+esc(SLT[S.view])+'</b>':db?'<b>Dashboard ผลการทดสอบ</b>':lg?'<b>บันทึกผลทดสอบ</b>':rp?'<b>แผนงานที่ต้องดำเนินการเดือนต่อไป</b>':'<b>'+esc(p.name)+'</b>'+(p.bank?'<span class="tag">'+esc(p.bank)+'</span>':'')+(p.year?'<span class="tag">'+esc(p.year)+'</span>':'');
   if(ov){
     var banks={},years={};
     S.projects.forEach(function(x){if(x.bank)banks[x.bank]=1;if(x.year)years[x.year]=1});
@@ -526,7 +550,7 @@ function renderTop(){
   }
   Array.prototype.forEach.call(document.querySelectorAll('#zoom button'),function(b){b.className=(+b.dataset.z===S.zoom[S.view])?'on':''});
   if(rp){
-    $('#sub').innerHTML=(lg||db?'<span>ข้อมูลจากแท็บ TestLog ใน Google Sheet · 1 แถว = 1 รอบการทดสอบ</span>':'<span>ข้อมูลจาก UAT และ PVT ทุกสถานะ · คลิกที่แถวเพื่อเปิดรายละเอียดโครงการ</span>')
+    $('#sub').innerHTML=(sl?'<span>'+esc(SLSUB[S.view])+'</span>':lg||db?'<span>ข้อมูลจากแท็บ TestLog ใน Google Sheet · 1 แถว = 1 รอบการทดสอบ</span>':'<span>ข้อมูลจาก UAT และ PVT ทุกสถานะ · คลิกที่แถวเพื่อเปิดรายละเอียดโครงการ</span>')
       +(!REMOTE?'<span id="demo">โหมดทดลอง: ข้อมูลเก็บในเบราว์เซอร์นี้เท่านั้น (ยังไม่ได้ตั้งค่า config.js)</span>':'');
     return;
   }
@@ -548,7 +572,7 @@ function renderTop(){
 function render(){
   renderTop();
   var g=$('#gantt'),sx=g.scrollLeft,sy=g.scrollTop;
-  if(S.view==='ov')renderOv(g);else if(S.view==='rp')renderRp(g);else if(S.view==='lg')renderLg(g);else if(S.view==='db')renderDb(g);else renderPj(g);
+  if(S.view==='ov')renderOv(g);else if(S.view==='rp')renderRp(g);else if(S.view==='lg')renderLg(g);else if(S.view==='db')renderDb(g);else if(S.view==='sv')renderSv(g);else if(S.view==='sm')renderSm(g);else if(S.view==='sd')renderSd(g);else renderPj(g);
   g.scrollLeft=sx;g.scrollTop=sy;
 }
 function stLine(p){
@@ -886,7 +910,7 @@ function rpRow(it,n,m){
 }
 function rpTable(items,m,emptyMsg){
   if(!items.length)return '<div class="rpe">'+emptyMsg+'</div>';
-  return '<div class="rpt"><table class="rt rtf"><colgroup><col style="width:40px"><col style="width:110px"><col><col style="width:70px"><col style="width:170px"><col style="width:100px"><col style="width:22%"></colgroup><thead><tr><th>#</th><th>Bank/ITMX</th><th>โครงการ</th><th>ENV</th><th>ช่วงวันที่</th><th>สถานะ</th><th>Remark</th></tr></thead><tbody>'
+  return '<div class="rpt"><table class="rt rtf"><colgroup><col style="width:40px"><col style="width:110px"><col><col style="width:70px"><col style="width:170px"><col style="width:100px"><col style="width:22%"></colgroup><thead><tr><th>#</th><th>Bank/ITMX</th><th>โครงการ</th><th>ระยะ</th><th>ช่วงวันที่</th><th>สถานะ</th><th>Remark</th></tr></thead><tbody>'
     +items.map(function(it,i){return rpRow(it,i+1,m)}).join('')+'</tbody></table></div>';
 }
 function rpText(D){
@@ -1361,7 +1385,7 @@ function openLog(id){
       +'<div class="fld"><span>ประเภท</span>'+enumSel('lg-kind','kind',l.kind)+'</div>'
       +'<div class="fld"><span>ประเภท_1</span>'+enumSel('lg-origin','origin',l.origin)+'</div></div>'
     +'<div class="g2"><div class="fld"><span>Owner (ฝ่ายเจ้าของโครงการ)</span><input id="lg-owner" list="lg-owners" value="'+esc(l.owner)+'"></div>'
-      +'<div class="fld"><span>ฝ่ายที่ร่วมทดสอบ</span><input id="lg-startDept" list="lg-depts" value="'+esc(l.startDept)+'"></div></div>'
+      +'<div class="fld"><span>ฝ่ายที่เริ่มทดสอบ</span><input id="lg-startDept" list="lg-depts" value="'+esc(l.startDept)+'"></div></div>'
     +A('title','เรื่อง/โครงการ',2)
     +'<div class="sec">รายละเอียดการทดสอบ</div>'
     +A('condition','เงื่อนไข',3)+A('limits','ข้อจำกัดในการทดสอบ',3)
@@ -1421,12 +1445,231 @@ function openLog(id){
   $('#lg-uatNo',el).focus();
 }
 
+/* ---------- 3 หน้า log เพิ่มเติม: Survey / เมลแจ้ง Support Test / Support รายวัน ---------- */
+var SLV={sv:1,sm:1,sd:1};
+var SV_ST=['ส่งเมลให้ฝ่ายพด.','ฝ่ายพด.แจ้งฝ่ายที่เกี่ยวข้อง','ฝ่ายพด. แจ้งข้อมูลกลับ','ส่งให้ ITMX'];
+var SV_COL=[['#e8f0fe','#1d4ed8'],['#fef3c7','#92400e'],['#ede9fe','#5b21b6'],['#dcfce7','#166534']];
+var SLT={sv:'Survey',sm:'เมลแจ้ง Support Test',sd:'Support ทำรายการต่างธนาคาร (รายวัน)'};
+var SLSUB={sv:'ข้อมูลจากแท็บ Survey · เลขลำดับ S_n ระบบรันให้อัตโนมัติ · คลิกที่แถวเพื่อแก้ไข',
+  sm:'ข้อมูลจากแท็บ SupportMail · เลขลำดับ SU_n ระบบรันให้อัตโนมัติ · คลิกที่แถวเพื่อแก้ไข',
+  sd:'ข้อมูลจากแท็บ SupportDaily · บันทึกจำนวนครั้งที่ Support ทำรายการต่างธนาคารเป็นรายวัน'};
+S.sl={sv:[],sm:[],sd:[]};S.slOk={};S.slErr={};
+S.slf={sv:{q:'',st:''},sm:{q:'',bank:'',q2:''},sd:{year:'',month:''}};
+var slLast={};
+function slNum(o){var m=String(o.no||'').match(/(\d+)\s*$/);return m?+m[1]:0}
+function normSl(kind,o){
+  var r={};Object.keys(o).forEach(function(k){r[k]=o[k]==null?'':String(o[k])});
+  if(kind==='sd'){r.date=String(r.date||'').slice(0,10);r.count=r.count===''?'':String(+r.count||0)}
+  if(kind==='sv')r.due=String(r.due||'').slice(0,10);
+  return r;
+}
+function loadSl(kind,silent){
+  return call('getSimple',kind).then(function(d){
+    S.slErr[kind]='';
+    var j=JSON.stringify(d);
+    if(silent&&j===slLast[kind]&&S.slOk[kind])return;
+    slLast[kind]=j;
+    S.sl[kind]=(d||[]).map(function(o){return normSl(kind,o)});S.slOk[kind]=true;
+    if(S.view===kind)render();
+  }).catch(function(e){
+    console.error(e);
+    if(e&&e.code==='auth'){clearKey();showLogin(silent?'รหัสผ่านถูกเปลี่ยนแล้ว กรุณาเข้าสู่ระบบใหม่':'');return}
+    if(silent&&S.slOk[kind])return;
+    S.slOk[kind]=true;
+    S.slErr[kind]=(e&&e.message==='unknown function')
+      ?'Apps Script ยังเป็นเวอร์ชันเก่า (ไม่มีฟังก์ชันของหน้านี้) — วางโค้ด Code.gs ล่าสุด แล้ว Deploy → Manage deployments → ไอคอนดินสอ → Version: New version → Deploy'
+      :'โหลดข้อมูลไม่สำเร็จ: '+(e&&e.message||'');
+    if(S.view===kind)render();
+  });
+}
+function slSave(kind,row){
+  var isNew=!S.sl[kind].some(function(x){return x.id===row.id});
+  var list=S.sl[kind],i=list.findIndex(function(x){return x.id===row.id});
+  if(kind!=='sd'&&!row.no){var mx=0;list.forEach(function(x){mx=Math.max(mx,slNum(x))});row.no=(kind==='sv'?'S_':'SU_')+(mx+1)}
+  if(i>=0)list[i]=row;else list.push(row);
+  render();
+  return persist('saveSimple',{kind:kind,row:(function(){var c=JSON.parse(JSON.stringify(row));if(isNew)c.no='';return c})()}).then(function(){if(REMOTE)return loadSl(kind,false)});
+}
+function slDel(kind,id){
+  S.sl[kind]=S.sl[kind].filter(function(x){return x.id!==id});
+  render();
+  return persist('deleteSimple',{kind:kind,id:id});
+}
+function slMatch(o,q){q=q.trim().toLowerCase();if(!q)return true;return Object.keys(o).some(function(k){return k!=='id'&&String(o[k]).toLowerCase().indexOf(q)>=0})}
+function slBar(){return '<div class="rpbar">'}
+function slHead(kind,extra){
+  return '<h2 class="rph">'+esc(SLT[kind])+'</h2><p class="rps">'+esc(SLSUB[kind])+'</p>';
+}
+function slGate(kind,g){
+  if(S.slErr[kind]){g.innerHTML='<div class="empty" style="max-width:640px;margin:0 auto">'+esc(S.slErr[kind])+'</div>';return true}
+  if(!S.slOk[kind]){g.innerHTML='<div class="empty">กำลังโหลดข้อมูล…</div>';return true}
+  return false;
+}
+function slInput(kind,id){
+  var el=$('#'+id);if(!el)return;
+  el.oninput=function(){
+    var pos=this.selectionStart;S.slf[kind][id.split('-')[1]]=this.value;render();
+    var i=$('#'+id);if(i){i.focus();try{i.setSelectionRange(pos,pos)}catch(e){}}
+  };
+}
+function renderSv(g){
+  if(slGate('sv',g))return;
+  var f=S.slf.sv,all=S.sl.sv.slice().sort(function(a,b){return slNum(a)-slNum(b)});
+  var rows=all.filter(function(o){return (!f.st||o.status===f.st)&&slMatch(o,f.q)});
+  var h='<div class="rpwrap">'+slHead('sv')
+    +'<div class="rpbar"><select id="sv-st"><option value="">ทุกสถานะ ('+all.length+')</option>'
+    +SV_ST.map(function(s){var n=all.filter(function(o){return o.status===s}).length;return '<option value="'+esc(s)+'"'+(f.st===s?' selected':'')+'>'+esc(s)+' ('+n+')</option>'}).join('')+'</select>'
+    +'<input id="sv-q" type="search" placeholder="ค้นหา เรื่อง / ฝ่าย / Remark…" value="'+esc(f.q)+'">'
+    +'<span class="sp"></span><button id="sl-add" class="pri">+ Survey</button><button id="sl-print">พิมพ์ / บันทึก PDF</button></div>';
+  if(!rows.length)h+='<div class="rpe" style="padding:24px 2px">'+(all.length?'ไม่มีรายการตามตัวกรองนี้':'ยังไม่มีข้อมูล — กด “+ Survey” เพื่อเริ่มต้น')+'</div>';
+  else{
+    h+='<div class="rpt"><table class="rt" style="table-layout:fixed;min-width:860px"><colgroup><col style="width:64px"><col style="width:26%"><col style="width:15%"><col style="width:17%"><col style="width:84px"><col></colgroup>'
+      +'<thead><tr><th>ลำดับ</th><th>เรื่อง</th><th>ฝ่ายให้ข้อมูล</th><th>สถานะ</th><th>Due Date</th><th>Remark</th></tr></thead><tbody>';
+    rows.forEach(function(o){
+      var si=SV_ST.indexOf(o.status),c=SV_COL[si>=0?si:0];
+      h+='<tr class="lgr" data-id="'+esc(o.id)+'"><td class="dt"><b>'+esc(o.no)+'</b></td><td class="nm">'+esc(o.title)+'</td><td>'+esc(o.dept)+'</td>'
+        +'<td>'+(o.status?'<span class="bd" style="background:'+c[0]+';color:'+c[1]+';white-space:normal">'+esc(o.status)+'</span>':'')+'</td>'
+        +'<td class="dt">'+esc(dShow(o.due))+'</td><td class="ml" style="white-space:pre-wrap">'+esc(o.remark)+'</td></tr>';
+    });
+    h+='</tbody></table></div>';
+  }
+  g.innerHTML=h+'</div>';
+  $('#sv-st').onchange=function(){S.slf.sv.st=this.value;render()};
+  slInput('sv','sv-q');slBind('sv',g);
+}
+function renderSm(g){
+  if(slGate('sm',g))return;
+  var f=S.slf.sm,all=S.sl.sm.slice().sort(function(a,b){return slNum(a)-slNum(b)}),banks={};
+  all.forEach(function(o){if(o.bank)banks[o.bank]=1});
+  var bl=Object.keys(banks).sort(function(a,b){return a.localeCompare(b,'th')});
+  var rows=all.filter(function(o){return (!f.bank||o.bank===f.bank)&&slMatch(o,f.q)});
+  var h='<div class="rpwrap">'+slHead('sm')
+    +'<div class="rpbar"><select id="sm-bank"><option value="">ทุก Bank ('+all.length+')</option>'
+    +bl.map(function(b){var n=all.filter(function(o){return o.bank===b}).length;return '<option value="'+esc(b)+'"'+(f.bank===b?' selected':'')+'>'+esc(b)+' ('+n+')</option>'}).join('')+'</select>'
+    +'<input id="sm-q" type="search" placeholder="ค้นหา Bank / เรื่อง / เนื้อความเมล…" value="'+esc(f.q)+'">'
+    +'<span class="sp"></span><button id="sl-add" class="pri">+ เมลแจ้ง Support Test</button><button id="sl-print">พิมพ์ / บันทึก PDF</button></div>';
+  if(!rows.length)h+='<div class="rpe" style="padding:24px 2px">'+(all.length?'ไม่มีรายการตามตัวกรองนี้':'ยังไม่มีข้อมูล — กด “+ เมลแจ้ง Support Test” เพื่อเริ่มต้น')+'</div>';
+  else{
+    h+='<div class="rpt"><table class="rt" style="table-layout:fixed;min-width:860px"><colgroup><col style="width:70px"><col style="width:110px"><col style="width:28%"><col style="width:150px"><col></colgroup>'
+      +'<thead><tr><th>ลำดับ</th><th>Bank</th><th>เรื่อง</th><th>วันที่ เวลา</th><th>Remark</th></tr></thead><tbody>';
+    rows.forEach(function(o){
+      h+='<tr class="lgr" data-id="'+esc(o.id)+'"><td class="dt"><b>'+esc(o.no)+'</b></td><td>'+esc(o.bank)+'</td><td class="nm">'+esc(o.title)+'</td>'
+        +'<td class="dt">'+esc(o.when)+'</td><td class="ml" style="white-space:pre-wrap;color:var(--mut)">'+esc(o.remark.length>240?o.remark.slice(0,240)+'…':o.remark)+'</td></tr>';
+    });
+    h+='</tbody></table></div>';
+  }
+  g.innerHTML=h+'</div>';
+  $('#sm-bank').onchange=function(){S.slf.sm.bank=this.value;render()};
+  slInput('sm','sm-q');slBind('sm',g);
+}
+function slBind(kind,g){
+  var a=$('#sl-add'),p=$('#sl-print');
+  if(a)a.onclick=function(){openSl(kind)};
+  if(p)p.onclick=function(){window.print()};
+  Array.prototype.forEach.call(g.querySelectorAll('tr.lgr'),function(tr){tr.onclick=function(){openSl(kind,tr.dataset.id)}});
+}
+/* ---- Support รายวัน ---- */
+function sdYears(){
+  var ys={},cy=String(new Date().getFullYear());ys[cy]=1;
+  S.sl.sd.forEach(function(o){if(isDate(o.date))ys[o.date.slice(0,4)]=1});
+  return Object.keys(ys).sort().reverse();
+}
+function sdBars(vals,sel){
+  var W=640,H=190,pl=30,pr=8,pt=22,pb=26,mx=Math.max.apply(null,vals.concat([1])),iw=(W-pl-pr)/12,bw=Math.min(28,iw*.55),s='';
+  var step=mx<=5?1:Math.pow(10,Math.floor(Math.log10(mx/4)))*(mx/4>5*Math.pow(10,Math.floor(Math.log10(mx/4)))?5:mx/4>2*Math.pow(10,Math.floor(Math.log10(mx/4)))?2:1);
+  for(var t=0;t<=mx;t+=step){var y=pt+(H-pt-pb)*(1-t/mx);s+='<line x1="'+pl+'" x2="'+(W-pr)+'" y1="'+y+'" y2="'+y+'" stroke="#e5e7eb"/><text x="'+(pl-5)+'" y="'+(y+3)+'" text-anchor="end" font-size="10" fill="#6b7280">'+t+'</text>'}
+  vals.forEach(function(v,i){
+    var x=pl+iw*i+(iw-bw)/2,h=(H-pt-pb)*v/mx,y=H-pb-h,on=(i+1)===sel;
+    if(v>0)s+='<path d="M'+x+' '+(H-pb)+'V'+(y+4)+'Q'+x+' '+y+' '+(x+4)+' '+y+'H'+(x+bw-4)+'Q'+(x+bw)+' '+y+' '+(x+bw)+' '+(y+4)+'V'+(H-pb)+'Z" fill="'+(on?'#2a78d6':'#9ec3ee')+'"><title>'+MON[i]+': '+v+' ครั้ง</title></path>'
+      +'<text x="'+(x+bw/2)+'" y="'+(y-5)+'" text-anchor="middle" font-size="11" fill="#374151">'+v+'</text>';
+    s+='<text x="'+(x+bw/2)+'" y="'+(H-8)+'" text-anchor="middle" font-size="10.5" fill="'+(on?'#111827':'#6b7280')+'" font-weight="'+(on?'700':'400')+'">'+MON[i]+'</text>';
+    s+='<rect x="'+(pl+iw*i)+'" y="'+pt+'" width="'+iw+'" height="'+(H-pt)+'" fill="transparent" data-m="'+(i+1)+'" style="cursor:pointer"/>';
+  });
+  return '<svg id="sd-chart" viewBox="0 0 '+W+' '+H+'" width="100%" role="img" aria-label="กราฟจำนวนครั้งที่ Support ทำรายการรายเดือน">'+s+'</svg>';
+}
+function renderSd(g){
+  if(slGate('sd',g))return;
+  var ys=sdYears(),f=S.slf.sd;
+  if(!f.year||ys.indexOf(f.year)<0)f.year=ys.indexOf(String(new Date().getFullYear()))>=0?String(new Date().getFullYear()):ys[0];
+  var mv=[0,0,0,0,0,0,0,0,0,0,0,0],md=[0,0,0,0,0,0,0,0,0,0,0,0],tot=0,days=0;
+  S.sl.sd.forEach(function(o){
+    if(!isDate(o.date)||o.date.slice(0,4)!==f.year)return;
+    var m=+o.date.slice(5,7)-1,c=+o.count||0;mv[m]+=c;md[m]++;tot+=c;days++;
+  });
+  var cm=(f.year===String(new Date().getFullYear()))?new Date().getMonth()+1:12;
+  if(!f.month||+f.month<1||+f.month>12)f.month=String(md[cm-1]?cm:(function(){for(var i=11;i>=0;i--)if(md[i])return i+1;return cm})());
+  var sm=+f.month;
+  var h='<div class="rpwrap">'+slHead('sd')
+    +'<div class="rpbar"><select id="sd-year">'+ys.map(function(y){return '<option value="'+y+'"'+(y===f.year?' selected':'')+'>ปี '+(+y+543)+'</option>'}).join('')+'</select>'
+    +'<span class="sp"></span><button id="sl-add" class="pri">+ บันทึกรายวัน</button><button id="sl-print">พิมพ์ / บันทึก PDF</button></div>'
+    +'<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start;margin-top:8px" class="sdg">'
+    +'<div><table class="rt" id="sd-sum" style="max-width:420px"><thead><tr><th>เดือน</th><th style="text-align:right">Support ทำรายการ (ครั้ง)</th><th style="text-align:right">วันที่บันทึก</th></tr></thead><tbody>';
+  for(var i=0;i<12;i++)h+='<tr class="sdm'+(i+1===sm?' on':'')+'" data-m="'+(i+1)+'" style="cursor:pointer'+(i+1===sm?';background:#eff6ff':'')+'"><td>'+MONF[i]+'</td><td style="text-align:right">'+(md[i]?mv[i]:'-')+'</td><td style="text-align:right;color:var(--mut)">'+(md[i]||'-')+'</td></tr>';
+  h+='<tr style="font-weight:700"><td>รวม</td><td style="text-align:right">'+tot+'</td><td style="text-align:right;color:var(--mut)">'+days+'</td></tr></tbody></table></div>'
+    +'<div>'+sdBars(mv,sm)+'</div></div>';
+  var ml=S.sl.sd.filter(function(o){return isDate(o.date)&&o.date.slice(0,4)===f.year&&+o.date.slice(5,7)===sm}).sort(function(a,b){return a.date<b.date?-1:1});
+  h+='<h3 style="margin:22px 0 6px;font-size:15px">รายวัน — '+MONF[sm-1]+' '+(+f.year+543)+' <small style="color:var(--mut);font-weight:400">· รวม '+mv[sm-1]+' ครั้ง</small></h3>';
+  if(!ml.length)h+='<div class="rpe">ยังไม่มีข้อมูลเดือนนี้ — กด “+ บันทึกรายวัน”</div>';
+  else{
+    h+='<div class="rpt"><table class="rt" style="max-width:640px"><thead><tr><th style="width:110px">วันที่</th><th style="width:90px;text-align:right">ครั้ง</th><th>Remark</th></tr></thead><tbody>';
+    ml.forEach(function(o){h+='<tr class="lgr" data-id="'+esc(o.id)+'"><td class="dt">'+esc(dShow(o.date))+'</td><td style="text-align:right"><b>'+esc(o.count)+'</b></td><td style="white-space:pre-wrap;color:var(--mut)">'+esc(o.remark)+'</td></tr>'});
+    h+='</tbody></table></div>';
+  }
+  g.innerHTML=h+'</div>';
+  $('#sd-year').onchange=function(){S.slf.sd.year=this.value;S.slf.sd.month='';render()};
+  Array.prototype.forEach.call(g.querySelectorAll('tr.sdm'),function(tr){tr.onclick=function(){S.slf.sd.month=tr.dataset.m;render()}});
+  Array.prototype.forEach.call(g.querySelectorAll('#sd-chart rect[data-m]'),function(r){r.onclick=function(){S.slf.sd.month=r.dataset.m;render()}});
+  slBind('sd',g);
+}
+function openSl(kind,id){
+  var isNew=!id,o,list=S.sl[kind];
+  if(isNew)o={id:uid('x'),no:'',title:'',dept:'',status:SV_ST[0],due:'',remark:'',bank:'',when:'',date:'',count:''};
+  else o=JSON.parse(JSON.stringify(list.find(function(x){return x.id===id})));
+  if(isNew&&kind==='sd'){var t=new Date();o.date=t.getFullYear()+'-'+pad2(t.getMonth()+1)+'-'+pad2(t.getDate())}
+  function T(k,label,extra){return '<div class="fld"><span>'+label+'</span><input id="sl-'+k+'" value="'+esc(o[k])+'"'+(extra||'')+'></div>'}
+  function A(k,label,rows,ph){return '<div class="fld"><span>'+label+'</span><textarea id="sl-'+k+'" rows="'+rows+'"'+(ph?' placeholder="'+ph+'"':'')+'>'+esc(o[k])+'</textarea></div>'}
+  var body='';
+  if(kind==='sv')body=T('title','เรื่อง')+T('dept','ฝ่ายให้ข้อมูล')
+    +'<div class="fld"><span>สถานะ</span><select id="sl-status">'+SV_ST.map(function(s){return '<option value="'+esc(s)+'"'+(o.status===s?' selected':'')+'>'+esc(s)+'</option>'}).join('')
+      +(o.status&&SV_ST.indexOf(o.status)<0?'<option value="'+esc(o.status)+'" selected>'+esc(o.status)+'</option>':'')+'</select></div>'
+    +'<div class="fld"><span>Due Date</span><input type="date" id="sl-due" value="'+(isDate(o.due)?o.due:'')+'"></div>'+A('remark','Remark',5);
+  else if(kind==='sm'){
+    var banks={};list.forEach(function(x){if(x.bank)banks[x.bank]=1});
+    body='<div class="fld"><span>Bank</span><input id="sl-bank" list="sl-banks" value="'+esc(o.bank)+'"><datalist id="sl-banks">'+Object.keys(banks).map(function(b){return '<option value="'+esc(b)+'">'}).join('')+'</datalist></div>'
+      +T('title','เรื่อง')+T('when','วันที่ เวลา (วันที่ส่งเมล — พิมพ์เป็นข้อความได้)',' placeholder="เช่น อ. 18/11/2568 09:22 AM"')+A('remark','Remark (เนื้อความเมล)',10);
+  }else body='<div class="fld"><span>วันที่</span><input type="date" id="sl-date" value="'+esc(o.date)+'"></div>'
+    +'<div class="fld"><span>Support ทำรายการ (ครั้ง)</span><input type="number" min="0" step="1" id="sl-count" value="'+esc(o.count)+'"></div><div class="note" id="sl-dup" style="color:#b45309;font-size:12px;margin:-4px 0 8px" hidden>มีข้อมูลของวันนี้อยู่แล้ว — การบันทึกจะเขียนทับค่าเดิม</div>'+A('remark','Remark',3);
+  var el=modal('<h3>'+(isNew?'เพิ่ม':'แก้ไข')+' '+esc(SLT[kind])+(o.no?' <small style="color:var(--mut);font-weight:400">'+esc(o.no)+'</small>':'')+'</h3>'+body
+    +'<div class="btns">'+(isNew?'':'<button class="danger" id="sl-del">ลบ</button>')+'<span style="flex:1"></span><button id="sl-x">ยกเลิก</button><button class="pri" id="sl-ok">บันทึก</button></div>');
+  var first=$('#sl-title',el)||$('#sl-date',el);
+  function dup(){
+    if(kind!=='sd')return null;
+    var d=$('#sl-date',el).value;
+    var h=list.find(function(x){return x.date===d&&x.id!==o.id});
+    $('#sl-dup',el).hidden=!h;return h;
+  }
+  if(kind==='sd'){$('#sl-date',el).onchange=dup;dup()}
+  $('#sl-x',el).onclick=closeModal;
+  $('#sl-ok',el).onclick=function(){
+    Object.keys(o).forEach(function(k){var f=$('#sl-'+k,el);if(f)o[k]=f.value.trim?f.value.trim():f.value});
+    if(kind==='sd'){
+      if(!o.date){$('#sl-date',el).focus();return}
+      if(o.count===''){$('#sl-count',el).focus();return}
+      var h=dup();if(h){o.id=h.id;o.no=h.no}
+    }else if(!o.title){$('#sl-title',el).focus();return}
+    var row=o;closeModal();slSave(kind,row);
+  };
+  if(!isNew)armDelete($('#sl-del',el),function(){closeModal();slDel(kind,o.id)});
+  if(first)first.focus();
+}
+
 /* ---------- navigation + events ---------- */
 function goPj(id){S.pid=id;S.view='pj';render();scrollAnchor();$('#gantt').scrollTop=0}
 function goOv(){S.view='ov';render();scrollAnchor();$('#gantt').scrollTop=0}
 $('#back').onclick=goOv;
 $('#toDb').onclick=function(){S.view='db';render();var g=$('#gantt');g.scrollLeft=0;g.scrollTop=0;loadLogs(false)};
 $('#toLg').onclick=function(){S.view='lg';render();var g=$('#gantt');g.scrollLeft=0;g.scrollTop=0;loadLogs(false)};
+['sv','sm','sd'].forEach(function(k){$('#to'+k.charAt(0).toUpperCase()+k.slice(1)).onclick=function(){S.view=k;render();var g=$('#gantt');g.scrollLeft=0;g.scrollTop=0;loadSl(k,false)}});
 $('#toRp').onclick=function(){S.view='rp';render();var g=$('#gantt');g.scrollLeft=0;g.scrollTop=0};
 $('#gantt').addEventListener('click',function(e){var tr=e.target.closest&&e.target.closest('tr.rw');if(tr)goPj(tr.dataset.id)});
 $('#addProj').onclick=function(){openProject()};
@@ -1445,7 +1688,7 @@ $('#zoom').onclick=function(e){
 };
 function showLogin(msg){
   locked=true;
-  S.projects=[];S.tasks=[];S.logs=[];S.lgLoaded=false;lastJson='';lastLogJson='';render();
+  S.projects=[];S.tasks=[];S.logs=[];S.lgLoaded=false;S.sl={sv:[],sm:[],sd:[]};S.slOk={};slLast={};lastJson='';lastLogJson='';render();
   var el=modal('<h3>เข้าสู่ระบบ</h3><p class="note">กรอกรหัสผ่านของทีมเพื่อเปิดดูข้อมูลโครงการ</p>'
     +'<div class="fld"><span>รหัสผ่านทีม</span><input type="password" id="l-key" autocomplete="current-password"></div>'
     +'<label class="ck"><input type="checkbox" id="l-rem"> จำไว้ในเครื่องนี้</label>'
@@ -1472,7 +1715,7 @@ function showLogin(msg){
 }
 $('#logout').onclick=function(){clearKey();showLogin('')};
 if(document.fonts&&document.fonts.ready)document.fonts.ready.then(function(){if(!drag&&S.view==='ov')render()});
-setInterval(function(){if(REMOTE&&KEY&&!pending&&!drag&&!ovEl){load(true);if(S.view==='lg'||S.view==='db')loadLogs(true)}},20000);
+setInterval(function(){if(REMOTE&&KEY&&!pending&&!drag&&!ovEl){load(true);if(S.view==='lg'||S.view==='db')loadLogs(true);if(SLV[S.view])loadSl(S.view,true)}},20000);
 (function start(){
   if(REMOTE){
     $('#logout').hidden=false;
