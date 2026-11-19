@@ -232,7 +232,7 @@ tr.lgh small{color:var(--mut);font-weight:400}
     <select id="fb"></select>
     <select id="fy"></select>
     <select id="fst" title="กรองตามสถานะ UAT">
-      <option value="">ทุกสถานะ UAT</option><option value="doing">กำลังทำ</option><option value="todo">ยังไม่เริ่ม</option><option value="done">เสร็จแล้ว</option><option value="blocked">ยกเลิก</option>
+      <option value="">ทุกสถานะ UAT</option><option value="doing">กำลังทำ</option><option value="todo">ยังไม่เริ่ม</option><option value="done">เสร็จแล้ว</option><option value="blocked">ติดขัด / ยกเลิก</option>
     </select>
     <button id="fclr" hidden>ล้างตัวกรอง</button>
   </div>
@@ -266,7 +266,7 @@ var STATUS={
   todo:{label:'ยังไม่เริ่ม',color:'#9aa1ab',tx:'#fff'},
   doing:{label:'กำลังทำ',color:'#f5b800',tx:'#5c4300'},
   done:{label:'เสร็จแล้ว',color:'#4cae4f',tx:'#fff'},
-  blocked:{label:'ยกเลิก',color:'#e5484d',tx:'#fff'}
+  blocked:{label:'ติดขัด / ยกเลิก',color:'#e5484d',tx:'#fff'}
 };
 function $(s,r){return (r||document).querySelector(s)}
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
@@ -1385,7 +1385,7 @@ function openLog(id){
       +'<div class="fld"><span>ประเภท</span>'+enumSel('lg-kind','kind',l.kind)+'</div>'
       +'<div class="fld"><span>ประเภท_1</span>'+enumSel('lg-origin','origin',l.origin)+'</div></div>'
     +'<div class="g2"><div class="fld"><span>Owner (ฝ่ายเจ้าของโครงการ)</span><input id="lg-owner" list="lg-owners" value="'+esc(l.owner)+'"></div>'
-      +'<div class="fld"><span>ฝ่ายที่ร่วมทดสอบ</span><input id="lg-startDept" list="lg-depts" value="'+esc(l.startDept)+'"></div></div>'
+      +'<div class="fld"><span>ฝ่ายที่เริ่มทดสอบ</span><input id="lg-startDept" list="lg-depts" value="'+esc(l.startDept)+'"></div></div>'
     +A('title','เรื่อง/โครงการ',2)
     +'<div class="sec">รายละเอียดการทดสอบ</div>'
     +A('condition','เงื่อนไข',3)+A('limits','ข้อจำกัดในการทดสอบ',3)
@@ -1550,11 +1550,11 @@ function renderSm(g){
     +'<span class="sp"></span><button id="sl-add" class="pri">+ เมลแจ้ง Support Test</button><button id="sl-print">พิมพ์ / บันทึก PDF</button></div>';
   if(!rows.length)h+='<div class="rpe" style="padding:24px 2px">'+(all.length?'ไม่มีรายการตามตัวกรองนี้':'ยังไม่มีข้อมูล — กด “+ เมลแจ้ง Support Test” เพื่อเริ่มต้น')+'</div>';
   else{
-    h+='<div class="rpt"><table class="rt" style="table-layout:fixed;min-width:860px"><colgroup><col style="width:70px"><col style="width:110px"><col style="width:28%"><col style="width:150px"><col></colgroup>'
+    h+='<div class="rpt"><table class="rt" style="table-layout:fixed;min-width:860px"><colgroup><col style="width:70px"><col style="width:110px"><col style="width:28%"><col style="width:24%"><col></colgroup>'
       +'<thead><tr><th>ลำดับ</th><th>Bank</th><th>เรื่อง</th><th>วันที่ เวลา</th><th>Remark</th></tr></thead><tbody>';
     rows.forEach(function(o){
       h+='<tr class="lgr" data-id="'+esc(o.id)+'"><td class="dt"><b>'+esc(o.no)+'</b></td><td>'+esc(o.bank)+'</td><td class="nm">'+esc(o.title)+'</td>'
-        +'<td class="dt">'+esc(o.when)+'</td><td class="ml" style="white-space:pre-wrap;color:var(--mut)">'+esc(o.remark.length>240?o.remark.slice(0,240)+'…':o.remark)+'</td></tr>';
+        +'<td style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;color:var(--mut)">'+esc(o.when.length>200?o.when.slice(0,200)+'…':o.when)+'</td><td class="ml" style="white-space:pre-wrap;overflow-wrap:anywhere;color:var(--mut)">'+esc(o.remark.length>240?o.remark.slice(0,240)+'…':o.remark)+'</td></tr>';
     });
     h+='</tbody></table></div>';
   }
