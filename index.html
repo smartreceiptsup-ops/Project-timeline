@@ -234,7 +234,7 @@ tr.lgh small{color:var(--mut);font-weight:400}
     <select id="fb"></select>
     <select id="fy"></select>
     <select id="fst" title="กรองตามสถานะ UAT">
-      <option value="">ทุกสถานะ UAT</option><option value="doing">กำลังทำ</option><option value="todo">ยังไม่เริ่ม</option><option value="done">เสร็จแล้ว</option><option value="blocked">ติดขัด / ยกเลิก</option>
+      <option value="">ทุกสถานะ UAT</option><option value="doing">กำลังทำ</option><option value="todo">ยังไม่เริ่ม</option><option value="done">เสร็จแล้ว</option><option value="blocked">ยกเลิก</option>
     </select>
     <button id="fclr" hidden>ล้างตัวกรอง</button>
   </div>
@@ -270,7 +270,7 @@ var STATUS={
   todo:{label:'ยังไม่เริ่ม',color:'#9aa1ab',tx:'#fff'},
   doing:{label:'กำลังทำ',color:'#f5b800',tx:'#5c4300'},
   done:{label:'เสร็จแล้ว',color:'#4cae4f',tx:'#fff'},
-  blocked:{label:'ติดขัด / ยกเลิก',color:'#e5484d',tx:'#fff'}
+  blocked:{label:'ยกเลิก',color:'#e5484d',tx:'#fff'}
 };
 function $(s,r){return (r||document).querySelector(s)}
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
@@ -1389,7 +1389,7 @@ function openLog(id){
       +'<div class="fld"><span>ประเภท</span>'+enumSel('lg-kind','kind',l.kind)+'</div>'
       +'<div class="fld"><span>ประเภท_1</span>'+enumSel('lg-origin','origin',l.origin)+'</div></div>'
     +'<div class="g2"><div class="fld"><span>Owner (ฝ่ายเจ้าของโครงการ)</span><input id="lg-owner" list="lg-owners" value="'+esc(l.owner)+'"></div>'
-      +'<div class="fld"><span>ฝ่ายที่เริ่มทดสอบ</span><input id="lg-startDept" list="lg-depts" value="'+esc(l.startDept)+'"></div></div>'
+      +'<div class="fld"><span>ฝ่ายที่ร่วมทดสอบ</span><input id="lg-startDept" list="lg-depts" value="'+esc(l.startDept)+'"></div></div>'
     +A('title','เรื่อง/โครงการ',2)
     +'<div class="sec">รายละเอียดการทดสอบ</div>'
     +A('condition','เงื่อนไข',3)+A('limits','ข้อจำกัดในการทดสอบ',3)
