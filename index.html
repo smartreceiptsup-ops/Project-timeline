@@ -19,6 +19,8 @@ button.pri{background:var(--accent);border-color:var(--accent);color:#fff}
 button.pri:hover{background:#1d4fd8}
 button.danger{color:#dc2626;border-color:#f3b4b4}
 button.danger.arm{background:#dc2626;color:#fff;border-color:#dc2626}
+#logout{background:#dc2626;border-color:#dc2626;color:#fff}#logout:hover{background:#b91c1c}
+#nav{display:flex;flex-wrap:wrap;gap:8px;flex-basis:100%}#nav[hidden]{display:none}
 #top{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line)}
 #ttl{font-size:16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .tag{font-size:12px;background:#eef1f5;color:#4b5563;border-radius:999px;padding:1px 10px}
@@ -238,20 +240,22 @@ tr.lgh small{color:var(--mut);font-weight:400}
   </div>
   <span style="flex:1"></span>
   <button id="addProj" class="pri">+ โครงการ</button>
-  <button id="toRp" title="แผนงานที่ต้องดำเนินการเดือนต่อไป">แผนงานเดือนต่อไป</button>
-  <button id="toDb" title="Dashboard สรุปผลการทดสอบรายเดือน">Dashboard</button>
-  <button id="toLg" title="บันทึกผลทดสอบ">บันทึกผลทดสอบ</button>
-  <button id="toSv" title="Survey">Survey</button>
-  <button id="toSm" title="เมลแจ้ง Support Test">เมลแจ้ง Support Test</button>
-  <button id="toSd" title="Support ทำรายการต่างธนาคาร รายวัน">Support รายวัน</button>
   <button id="editProj" hidden>✎ ข้อมูลโครงการ</button>
   <button id="addTask" class="pri" hidden>+ งานหลัก</button>
   <div class="grp" id="zoom">
     <button data-z="28">วัน</button><button data-z="14">สัปดาห์</button><button data-z="5">เดือน</button>
   </div>
   <button id="goToday">วันนี้</button>
-  <button id="logout" hidden>ออกจากระบบ</button>
+  <button id="toRp" title="แผนงานที่ต้องดำเนินการเดือนต่อไป">แผนงานเดือนต่อไป</button>
   <span id="sync"></span>
+  <button id="logout" hidden>ออกจากระบบ</button>
+  <div id="nav">
+  <button id="toDb" title="Dashboard สรุปผลการทดสอบรายเดือน">Dashboard</button>
+  <button id="toLg" title="บันทึกผลทดสอบ">บันทึกผลทดสอบ</button>
+  <button id="toSv" title="Survey">Survey</button>
+  <button id="toSm" title="เมลแจ้ง Support Test">เมลแจ้ง Support Test</button>
+  <button id="toSd" title="Support ทำรายการต่างธนาคาร รายวัน">Support รายวัน</button>
+  </div>
 </div>
 <div id="sub"></div>
 <div id="gantt"></div>
@@ -534,7 +538,7 @@ function fillSel(sel,first,vals,cur){
 }
 function renderTop(){
   var ov=S.view==='ov',lg=S.view==='lg',db=S.view==='db',sl=!!SLV[S.view],rp=S.view==='rp'||lg||db||sl,p=(ov||rp)?null:pById(S.pid);
-  $('#back').hidden=ov;$('#flt').hidden=!ov;$('#addProj').hidden=!ov;$('#toRp').hidden=!ov;$('#toLg').hidden=!ov;$('#toDb').hidden=!ov;$('#toSv').hidden=!ov;$('#toSm').hidden=!ov;$('#toSd').hidden=!ov;
+  $('#back').hidden=ov;$('#flt').hidden=!ov;$('#addProj').hidden=!ov;$('#toRp').hidden=!ov;$('#toLg').hidden=!ov;$('#toDb').hidden=!ov;$('#toSv').hidden=!ov;$('#toSm').hidden=!ov;$('#toSd').hidden=!ov;$('#nav').hidden=!ov;
   $('#editProj').hidden=ov||rp;$('#addTask').hidden=ov||rp;$('#zoom').hidden=rp;$('#goToday').hidden=rp;
   $('#ttl').innerHTML=ov?'<b>Project Timeline</b>':sl?'<b>'+esc(SLT[S.view])+'</b>':db?'<b>Dashboard ผลการทดสอบ</b>':lg?'<b>บันทึกผลทดสอบ</b>':rp?'<b>แผนงานที่ต้องดำเนินการเดือนต่อไป</b>':'<b>'+esc(p.name)+'</b>'+(p.bank?'<span class="tag">'+esc(p.bank)+'</span>':'')+(p.year?'<span class="tag">'+esc(p.year)+'</span>':'');
   if(ov){
