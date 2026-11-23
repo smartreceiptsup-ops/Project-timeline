@@ -20,6 +20,9 @@ button.pri:hover{background:#1d4fd8}
 button.danger{color:#dc2626;border-color:#f3b4b4}
 button.danger.arm{background:#dc2626;color:#fff;border-color:#dc2626}
 #logout{background:#dc2626;border-color:#dc2626;color:#fff}#logout:hover{background:#b91c1c}
+#toast{position:fixed;left:50%;top:18px;transform:translate(-50%,-30px);background:#166534;color:#fff;padding:10px 22px;border-radius:999px;font-size:15px;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:9999;display:flex;gap:8px;align-items:center}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+@media print{#toast{display:none}}
 #nav{display:flex;flex-wrap:wrap;gap:8px;flex-basis:100%}#nav[hidden]{display:none}
 #top{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line)}
 #ttl{font-size:16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
@@ -234,7 +237,7 @@ tr.lgh small{color:var(--mut);font-weight:400}
     <select id="fb"></select>
     <select id="fy"></select>
     <select id="fst" title="กรองตามสถานะ UAT">
-      <option value="">ทุกสถานะ UAT</option><option value="doing">กำลังทำ</option><option value="todo">ยังไม่เริ่ม</option><option value="done">เสร็จแล้ว</option><option value="blocked">ยกเลิก</option>
+      <option value="">ทุกสถานะ UAT</option><option value="doing">กำลังทำ</option><option value="todo">ยังไม่เริ่ม</option><option value="done">เสร็จแล้ว</option><option value="blocked">ติดขัด / ยกเลิก</option>
     </select>
     <button id="fclr" hidden>ล้างตัวกรอง</button>
   </div>
@@ -246,7 +249,7 @@ tr.lgh small{color:var(--mut);font-weight:400}
     <button data-z="28">วัน</button><button data-z="14">สัปดาห์</button><button data-z="5">เดือน</button>
   </div>
   <button id="goToday">วันนี้</button>
-  <button id="toRp" title="แผนงานที่ต้องดำเนินการเดือนต่อไป">ระบุช่วงเวลา</button>
+  <button id="toRp" title="แผนงานที่ต้องดำเนินการเดือนต่อไป">แผนงานเดือนต่อไป</button>
   <span id="sync"></span>
   <button id="logout" hidden>ออกจากระบบ</button>
   <div id="nav">
@@ -270,7 +273,7 @@ var STATUS={
   todo:{label:'ยังไม่เริ่ม',color:'#9aa1ab',tx:'#fff'},
   doing:{label:'กำลังทำ',color:'#f5b800',tx:'#5c4300'},
   done:{label:'เสร็จแล้ว',color:'#4cae4f',tx:'#fff'},
-  blocked:{label:'ยกเลิก',color:'#e5484d',tx:'#fff'}
+  blocked:{label:'ติดขัด / ยกเลิก',color:'#e5484d',tx:'#fff'}
 };
 function $(s,r){return (r||document).querySelector(s)}
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
@@ -414,9 +417,16 @@ function normP(p){
 }
 function pById(id){return S.projects.find(function(p){return p.id===id})}
 function setSync(msg,err){var e=$('#sync');e.textContent=msg;e.className=err?'err':''}
+var toastT=null;
+function toast(msg){
+  var t=$('#toast');
+  if(!t){t=document.createElement('div');t.id='toast';t.setAttribute('role','status');document.body.appendChild(t)}
+  t.innerHTML='<span>✓</span>'+esc(msg);t.className='show';
+  clearTimeout(toastT);toastT=setTimeout(function(){t.className=''},2200);
+}
 function persist(fn,arg){
   pending++;setSync('กำลังบันทึก…');
-  return call(fn,arg).then(function(){pending--;if(!pending)setSync('บันทึกแล้ว ✓')})
+  return call(fn,arg).then(function(){pending--;if(!pending){setSync('');toast('บันทึกแล้ว')}})
     .catch(function(e){
       pending--;setSync('บันทึกไม่สำเร็จ ✗','err');console.error(e);
       if(e&&e.code==='auth'){clearKey();showLogin('รหัสผ่านไม่ถูกต้องหรือถูกเปลี่ยนแล้ว')}
@@ -1389,7 +1399,7 @@ function openLog(id){
       +'<div class="fld"><span>ประเภท</span>'+enumSel('lg-kind','kind',l.kind)+'</div>'
       +'<div class="fld"><span>ประเภท_1</span>'+enumSel('lg-origin','origin',l.origin)+'</div></div>'
     +'<div class="g2"><div class="fld"><span>Owner (ฝ่ายเจ้าของโครงการ)</span><input id="lg-owner" list="lg-owners" value="'+esc(l.owner)+'"></div>'
-      +'<div class="fld"><span>ฝ่ายที่ร่วมทดสอบ</span><input id="lg-startDept" list="lg-depts" value="'+esc(l.startDept)+'"></div></div>'
+      +'<div class="fld"><span>ฝ่ายที่เริ่มทดสอบ</span><input id="lg-startDept" list="lg-depts" value="'+esc(l.startDept)+'"></div></div>'
     +A('title','เรื่อง/โครงการ',2)
     +'<div class="sec">รายละเอียดการทดสอบ</div>'
     +A('condition','เงื่อนไข',3)+A('limits','ข้อจำกัดในการทดสอบ',3)
@@ -1454,9 +1464,7 @@ var SLV={sv:1,sm:1,sd:1};
 var SV_ST=['ส่งเมลให้ฝ่ายพด.','ฝ่ายพด.แจ้งฝ่ายที่เกี่ยวข้อง','ฝ่ายพด. แจ้งข้อมูลกลับ','ส่งให้ ITMX'];
 var SV_COL=[['#e8f0fe','#1d4ed8'],['#fef3c7','#92400e'],['#ede9fe','#5b21b6'],['#dcfce7','#166534']];
 var SLT={sv:'Survey',sm:'เมลแจ้ง Support Test',sd:'Support ทำรายการต่างธนาคาร (รายวัน)'};
-var SLSUB={sv:'ข้อมูลจากแท็บ Survey · เลขลำดับ S_n ระบบรันให้อัตโนมัติ · คลิกที่แถวเพื่อแก้ไข',
-  sm:'ข้อมูลจากแท็บ SupportMail · เลขลำดับ SU_n ระบบรันให้อัตโนมัติ · คลิกที่แถวเพื่อแก้ไข',
-  sd:'ข้อมูลจากแท็บ SupportDaily · บันทึกจำนวนครั้งที่ Support ทำรายการต่างธนาคารเป็นรายวัน'};
+var SLSUB={sv:'ข้อมูลจากแท็บ Survey ใน Google Sheet',sm:'ข้อมูลจากแท็บ SupportMail ใน Google Sheet',sd:'ข้อมูลจากแท็บ SupportDaily ใน Google Sheet'};
 S.sl={sv:[],sm:[],sd:[]};S.slOk={};S.slErr={};
 S.slf={sv:{q:'',st:''},sm:{q:'',bank:'',q2:''},sd:{year:'',month:''}};
 var slLast={};
@@ -1502,7 +1510,7 @@ function slDel(kind,id){
 function slMatch(o,q){q=q.trim().toLowerCase();if(!q)return true;return Object.keys(o).some(function(k){return k!=='id'&&String(o[k]).toLowerCase().indexOf(q)>=0})}
 function slBar(){return '<div class="rpbar">'}
 function slHead(kind,extra){
-  return '<h2 class="rph">'+esc(SLT[kind])+'</h2><p class="rps">'+esc(SLSUB[kind])+'</p>';
+  return '<h2 class="rph">'+esc(SLT[kind])+'</h2>';
 }
 function slGate(kind,g){
   if(S.slErr[kind]){g.innerHTML='<div class="empty" style="max-width:640px;margin:0 auto">'+esc(S.slErr[kind])+'</div>';return true}
