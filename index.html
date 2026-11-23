@@ -564,7 +564,7 @@ function renderTop(){
   }
   Array.prototype.forEach.call(document.querySelectorAll('#zoom button'),function(b){b.className=(+b.dataset.z===S.zoom[S.view])?'on':''});
   if(rp){
-    $('#sub').innerHTML=(sl?'<span>'+esc(SLSUB[S.view])+'</span>':lg||db?'<span>ข้อมูลจากแท็บ TestLog ใน Google Sheet</span>':'<span>ข้อมูลจาก UAT และ PVT ทุกสถานะ · คลิกที่แถวเพื่อเปิดรายละเอียดโครงการ</span>')
+    $('#sub').innerHTML=(sl?'<span>'+esc(SLSUB[S.view])+'</span>':lg||db?'<span>ข้อมูลจากแท็บ TestLog ใน Google Sheet</span>':'<span>ข้อมูลจากแท็บ Projects ใน Google Sheet</span>')
       +(!REMOTE?'<span id="demo">โหมดทดลอง: ข้อมูลเก็บในเบราว์เซอร์นี้เท่านั้น (ยังไม่ได้ตั้งค่า config.js)</span>':'');
     return;
   }
