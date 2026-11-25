@@ -23,7 +23,16 @@ button.danger.arm{background:#dc2626;color:#fff;border-color:#dc2626}
 #toast{position:fixed;left:50%;top:18px;transform:translate(-50%,-30px);background:#166534;color:#fff;padding:10px 22px;border-radius:999px;font-size:15px;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:9999;display:flex;gap:8px;align-items:center}
 #toast.show{opacity:1;transform:translate(-50%,0)}
 @media print{#toast{display:none}}
-#nav{display:flex;flex-wrap:wrap;gap:8px;flex-basis:100%}#nav[hidden]{display:none}
+#app{flex:1;display:flex;min-height:0}
+#main{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0}
+#side{width:224px;flex:none;padding:10px 8px;border-right:1px solid var(--line);background:#f9fafb;display:flex;flex-direction:column;gap:2px;overflow:auto}
+body.noside #side{display:none}
+#side button{display:flex;align-items:center;gap:10px;width:100%;border:0;background:transparent;text-align:left;padding:9px 12px;border-radius:8px;font-size:14px;color:var(--fg);cursor:pointer}
+#side button:hover{background:#eef1f5}
+#side button.on{background:#e3e7ee;font-weight:600}
+#side svg,#sideTog svg{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+#sideTog{padding:6px 8px;line-height:0}
+@media (max-width:760px){#side{position:absolute;z-index:50;top:56px;bottom:0;box-shadow:4px 0 16px rgba(0,0,0,.12)}#app{position:relative}}
 #top{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line)}
 #ttl{font-size:16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .tag{font-size:12px;background:#eef1f5;color:#4b5563;border-radius:999px;padding:1px 10px}
@@ -186,7 +195,8 @@ table.ul{width:100%;border-collapse:collapse;font-size:13px}
 @media (max-width:1100px){.dbg{grid-template-columns:1fr}.ytot .kpis{grid-template-columns:1fr 1fr}}
 @media print{.db,.db *{-webkit-print-color-adjust:exact;print-color-adjust:exact}.card,.kpi{break-inside:avoid}.dbg{grid-template-columns:minmax(0,1fr)}.ytot .kpis{grid-template-columns:1fr 1fr}.ulist{max-height:none;overflow:visible}.db .plot{min-height:200px}#dbtip{display:none}}
 @media print{
-  #top,#sub,.rpbar{display:none!important}
+  #top,#sub,.rpbar,#side{display:none!important}
+  #app,#main{display:block}
   html,body{height:auto;display:block}
   #gantt{overflow:visible}
   .rpwrap{padding:0;max-width:none}
@@ -230,6 +240,7 @@ tr.lgh small{color:var(--mut);font-weight:400}
 </head>
 <body>
 <div id="top">
+  <button id="sideTog" title="ซ่อน/แสดงเมนูด้านข้าง" aria-label="เมนูด้านข้าง"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg></button>
   <button id="back" hidden>← Home</button>
   <div id="ttl"></div>
   <div id="flt">
@@ -237,7 +248,7 @@ tr.lgh small{color:var(--mut);font-weight:400}
     <select id="fb"></select>
     <select id="fy"></select>
     <select id="fst" title="กรองตามสถานะ UAT">
-      <option value="">ทุกสถานะ UAT</option><option value="doing">กำลังทำ</option><option value="todo">ยังไม่เริ่ม</option><option value="done">เสร็จแล้ว</option><option value="blocked">ยกเลิก</option>
+      <option value="">ทุกสถานะ UAT</option><option value="doing">กำลังทำ</option><option value="todo">ยังไม่เริ่ม</option><option value="done">เสร็จแล้ว</option><option value="blocked">ติดขัด / ยกเลิก</option>
     </select>
     <button id="fclr" hidden>ล้างตัวกรอง</button>
   </div>
@@ -249,19 +260,23 @@ tr.lgh small{color:var(--mut);font-weight:400}
     <button data-z="28">วัน</button><button data-z="14">สัปดาห์</button><button data-z="5">เดือน</button>
   </div>
   <button id="goToday">วันนี้</button>
-  <button id="toRp" title="แผนงานที่ต้องดำเนินการเดือนต่อไป">ระบุช่วงเวลา</button>
+  <button id="toRp" title="แผนงานที่ต้องดำเนินการเดือนต่อไป">แผนงานเดือนต่อไป</button>
   <span id="sync"></span>
   <button id="logout" hidden>ออกจากระบบ</button>
-  <div id="nav">
-  <button id="toDb" title="Dashboard สรุปผลการทดสอบรายเดือน">Dashboard</button>
-  <button id="toLg" title="บันทึกผลทดสอบ">บันทึกผลทดสอบ</button>
-  <button id="toSv" title="Survey">Survey</button>
-  <button id="toSm" title="เมลแจ้ง Support Test">เมลแจ้ง Support Test</button>
-  <button id="toSd" title="Support ทำรายการต่างธนาคาร รายวัน">Support รายวัน</button>
-  </div>
 </div>
+<div id="app">
+<nav id="side">
+  <button id="toDb" title="Dashboard"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span>Dashboard</span></button>
+  <button id="toLg" title="บันทึกผลทดสอบ"><svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v3H9zM9 12h6M9 16h6"/></svg><span>บันทึกผลทดสอบ</span></button>
+  <button id="toSv" title="Survey"><svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></svg><span>Survey</span></button>
+  <button id="toSm" title="เมลแจ้ง Support Test"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg><span>เมลแจ้ง Support Test</span></button>
+  <button id="toSd" title="Support รายวัน"><svg viewBox="0 0 24 24"><path d="M4 19V9M9 19V5M14 19v-6M19 19V8"/><path d="M3 19h18"/></svg><span>Support รายวัน</span></button>
+</nav>
+<div id="main">
 <div id="sub"></div>
 <div id="gantt"></div>
+</div>
+</div>
 
 <script src="config.js"></script>
 <script>
@@ -273,7 +288,7 @@ var STATUS={
   todo:{label:'ยังไม่เริ่ม',color:'#9aa1ab',tx:'#fff'},
   doing:{label:'กำลังทำ',color:'#f5b800',tx:'#5c4300'},
   done:{label:'เสร็จแล้ว',color:'#4cae4f',tx:'#fff'},
-  blocked:{label:'ยกเลิก',color:'#e5484d',tx:'#fff'}
+  blocked:{label:'ติดขัด / ยกเลิก',color:'#e5484d',tx:'#fff'}
 };
 function $(s,r){return (r||document).querySelector(s)}
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
@@ -548,7 +563,7 @@ function fillSel(sel,first,vals,cur){
 }
 function renderTop(){
   var ov=S.view==='ov',lg=S.view==='lg',db=S.view==='db',sl=!!SLV[S.view],rp=S.view==='rp'||lg||db||sl,p=(ov||rp)?null:pById(S.pid);
-  $('#back').hidden=ov;$('#flt').hidden=!ov;$('#addProj').hidden=!ov;$('#toRp').hidden=!ov;$('#toLg').hidden=!ov;$('#toDb').hidden=!ov;$('#toSv').hidden=!ov;$('#toSm').hidden=!ov;$('#toSd').hidden=!ov;$('#nav').hidden=!ov;
+  $('#back').hidden=ov;[['toDb','db'],['toLg','lg'],['toSv','sv'],['toSm','sm'],['toSd','sd']].forEach(function(a){$('#'+a[0]).classList.toggle('on',S.view===a[1])});$('#flt').hidden=!ov;$('#addProj').hidden=!ov;$('#toRp').hidden=!ov;
   $('#editProj').hidden=ov||rp;$('#addTask').hidden=ov||rp;$('#zoom').hidden=rp;$('#goToday').hidden=rp;
   $('#ttl').innerHTML=ov?'<b>Project Timeline</b>':sl?'<b>'+esc(SLT[S.view])+'</b>':db?'<b>Dashboard ผลการทดสอบ</b>':lg?'<b>บันทึกผลทดสอบ</b>':rp?'<b>แผนงานที่ต้องดำเนินการเดือนต่อไป</b>':'<b>'+esc(p.name)+'</b>'+(p.bank?'<span class="tag">'+esc(p.bank)+'</span>':'')+(p.year?'<span class="tag">'+esc(p.year)+'</span>':'');
   if(ov){
@@ -564,7 +579,7 @@ function renderTop(){
   }
   Array.prototype.forEach.call(document.querySelectorAll('#zoom button'),function(b){b.className=(+b.dataset.z===S.zoom[S.view])?'on':''});
   if(rp){
-    $('#sub').innerHTML=(sl?'<span>'+esc(SLSUB[S.view])+'</span>':lg||db?'<span>ข้อมูลจากแท็บ TestLog ใน Google Sheet</span>':'<span>ข้อมูลจากแท็บ Projects ใน Google Sheet</span>')
+    $('#sub').innerHTML=(sl?'<span>'+esc(SLSUB[S.view])+'</span>':lg||db?'<span>ข้อมูลจากแท็บ TestLog ใน Google Sheet · 1 แถว = 1 รอบการทดสอบ</span>':'<span>ข้อมูลจาก UAT และ PVT ทุกสถานะ · คลิกที่แถวเพื่อเปิดรายละเอียดโครงการ</span>')
       +(!REMOTE?'<span id="demo">โหมดทดลอง: ข้อมูลเก็บในเบราว์เซอร์นี้เท่านั้น (ยังไม่ได้ตั้งค่า config.js)</span>':'');
     return;
   }
@@ -1399,7 +1414,7 @@ function openLog(id){
       +'<div class="fld"><span>ประเภท</span>'+enumSel('lg-kind','kind',l.kind)+'</div>'
       +'<div class="fld"><span>ประเภท_1</span>'+enumSel('lg-origin','origin',l.origin)+'</div></div>'
     +'<div class="g2"><div class="fld"><span>Owner (ฝ่ายเจ้าของโครงการ)</span><input id="lg-owner" list="lg-owners" value="'+esc(l.owner)+'"></div>'
-      +'<div class="fld"><span>ฝ่ายที่ร่วมทดสอบ</span><input id="lg-startDept" list="lg-depts" value="'+esc(l.startDept)+'"></div></div>'
+      +'<div class="fld"><span>ฝ่ายที่เริ่มทดสอบ</span><input id="lg-startDept" list="lg-depts" value="'+esc(l.startDept)+'"></div></div>'
     +A('title','เรื่อง/โครงการ',2)
     +'<div class="sec">รายละเอียดการทดสอบ</div>'
     +A('condition','เงื่อนไข',3)+A('limits','ข้อจำกัดในการทดสอบ',3)
@@ -1679,6 +1694,12 @@ function openSl(kind,id){
 function goPj(id){S.pid=id;S.view='pj';render();scrollAnchor();$('#gantt').scrollTop=0}
 function goOv(){S.view='ov';render();scrollAnchor();$('#gantt').scrollTop=0}
 $('#back').onclick=goOv;
+(function(){
+  var b=document.body,k='ptl-side';
+  try{if(localStorage.getItem(k)==='0'||(localStorage.getItem(k)===null&&window.innerWidth<=760))b.classList.add('noside')}catch(e){}
+  $('#sideTog').onclick=function(){var off=b.classList.toggle('noside');try{localStorage.setItem(k,off?'0':'1')}catch(e){}};
+  $('#side').addEventListener('click',function(e){if(e.target.closest('button')&&window.innerWidth<=760){b.classList.add('noside')}});
+})();
 $('#toDb').onclick=function(){S.view='db';render();var g=$('#gantt');g.scrollLeft=0;g.scrollTop=0;loadLogs(false)};
 $('#toLg').onclick=function(){S.view='lg';render();var g=$('#gantt');g.scrollLeft=0;g.scrollTop=0;loadLogs(false)};
 ['sv','sm','sd'].forEach(function(k){$('#to'+k.charAt(0).toUpperCase()+k.slice(1)).onclick=function(){S.view=k;render();var g=$('#gantt');g.scrollLeft=0;g.scrollTop=0;loadSl(k,false)}});
